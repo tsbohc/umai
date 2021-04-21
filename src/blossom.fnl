@@ -24,12 +24,25 @@
 ; f g h     - functions
 ; re        - regular expression
 
-; override (. xt :key)
-; to support (. xt :a.b.c) ? seems dumb now that i think about it
-
-; dunno if it's an eyesore, there're bound to be some globals
-(global __exposed {})
 (global inspect (require :inspect))
+
+; TODO:
+; - find a better way to use grammar and (lit), sting:lit?
+
+; step 1, get raw template
+; color1: "#{@:-[colo].color1-:@}"
+
+; step 2, make a substitution dictionary
+; {@:-[colo].color1-:} = "[colo].color1"
+
+; step 3, compile tokens
+; {@:-[colo].color1-:} = "colo_val.color1"
+
+; step 4, compile value
+; {@:-[colo].color1-:} = "ff0000"
+
+; step 5, perform substitution on raw template
+; color1: "#ff0000"
 
 ; {{{ lib
 (macro when-not [cond ...]
@@ -50,6 +63,7 @@
      (var ,name ,...)
      true))
 
+; haunted
 (macro global- [name ...]
   `(when (= nil ,name)
      (global ,name ,...)
@@ -72,11 +86,16 @@
     `(tset ,tab ,key ,val)
     `(table.insert ,tab ,key)))
 
-(macro expose [name value]
-  `(tset _G.__exposed ,(tostring name) ,value))
+(global __cache {})
+(macro memoize [f ...]
+  `(do
+     (if (nil? (. _G.__cache ,(tostring f ...)))
+       (tset _G.__cache ,(tostring f) ,f ,...))
+     (. _G.__cache ,(tostring f))))
 
 ;(macro if-let)
 ;(macro when-let)
+
 
 (defn lit [s]
   "literalize string for regular expressions"
@@ -84,71 +103,66 @@
     "[%(%)%.%%%+%-%*%?%[%]%^%$]"
     (fn [c] (.. "%" c))))
 
+(defn split [s d]
+  "split string 's' by delimiter 'd' and return a table"
+  (let [s (.. s d)
+        xs []]
+    (each [m (s:gmatch (.. "(.-)" (lit d)))]
+      (% xs m))
+    xs))
+
 (defn nil? [v]
   (= v nil))
 
 (defn string? [v]
   (= (type v) :string))
-; }}}
+
+(defn seq? [xs]
+  (var i 0)
+  (each [_ (pairs xs)]
+    (set i (+ i 1))
+    (if (nil? (. xs i))
+      (lua "return false")))
+  true)
+
+(defn contains? [xt y]
+  (if (seq? xt)
+    (each [_ v (ipairs xt)]
+      (when (= v y)
+        (lua "return true")))
+    (when (not= nil (. xt y))
+      (lua "return true")))
+  false)
 
 (defn pretty-print [...]
   (print (inspect ...)))
 
-; --- definitions ---
+; }}}
 
-; heirarchy & terms
-; template:
-;   patterns:
-;     tokens
+(defn expose [xt]
+  (if (nil? _G.__exposed)
+    (global __exposed {}))
+  (each [k v (pairs xt)]
+    (% __exposed k v)))
 
 (global grammar
   {:p {:l "{@:-" :r "-:@}"}
    :e {:l "{@!-" :r "-!@}"}
    :v {:l "["    :r    "]"}})
 
-; -- low level ---
-
-; TODO: redo this in favor of (find  :key)
-(fn get-node [node-path]
-  (var v __exposed)
-  (when (string? node-path)
-    (each [w (node-path:gmatch "[%w_]+")]
-      (if (nil? v) nil (set v (. v w))))
-    v))
-
-; seach for exposed vars, then load varset if needed and look there
-(defn find [xs]
-  )
-
-(find [:a :b])
-
 ; --- varset ---
-
-; TODO: implement 
-; (cached? varset-list) -- check if cached
-; (cache varset-list) --
-; (get cache varset-list)
-
-; FIXME: or just do memoization and stop nesting shit
-; (memoize varset-list)
-; run varset-list
-; cache result
-; reassign varset-list to just return cache
 
 (defn varset-list []
   "retrieve varsets list once and returns it on subsequent calls"
-  (when (nil? _G.__varset-list_cache)
-    (with-open
-      [file (assert (io.popen "find varsets -type f" "r"))]
-      (let [xs []]
-        (each [line (file:lines)]
-          (% xs (pick-values 1 (line:gsub "varsets/" ""))))
-        (global __varset-list_cache xs))))
-  __varset-list_cache)
+  (with-open
+    [file (assert (io.popen "find varsets -type f" "r"))]
+    (let [xs []]
+      (each [line (file:lines)]
+        (% xs (pick-values 1 (line:gsub "varsets/" ""))))
+      xs)))
 
 
 (defn varset [name]
-  ; TODO: implement caching like with varsets
   "return a varset table by [name]"
   (with-open
     [file (io.open (.. "varsets/" name) "r")]
@@ -163,58 +177,87 @@
 
 ; --- template ---
 
-(defn template [path]
-  "return file contents of template at [path] as a string"
-  (with-open
-    [file (io.open path "r")]
-    (let [s (file:read "*a")]
-      s)))
+(fn get-node [xt dots]
+  "retrieve value from table 'xt' by 'dots' dot-path"
+  (var v xt)
+  (when (string? dots)
+    (each [w (dots:gmatch "[%w_]+")]
+      (if (nil? v) nil (set v (. v w))))
+    v))
 
 
-(defn compile-tokens [pattern]
-  "parse [pattern] and return compiled string"
+(fn value [dots]
+  "find value by 'dots', a dot separated path, in __exposed or varsets.
+  token_value.value => 10"
+  (let [root (or (dots:match "(%a+)%.") dots)
+        path (dots:gsub (.. root (lit ".")) "")]
+    (or ; if alone didn't suffice
+      (if (contains? __exposed root)
+        (get-node __exposed dots)
+        (contains? (memoize (varset-list)) root)
+        (let [varset (memoize (varset root))]
+          (get-node varset path)))
+      "")))
+
+
+(defn tokens [pattern]
+  "parse 'pattern' string and compile tokens.
+  [token].value -> token_value.value"
   (let [dec-l (. grammar :v :l)
         dec-r (. grammar :v :r)
-        key-re (.. (lit dec-l) "(.-)" (lit dec-r))]
-    ; FIXME: mutations
-    (var parsed pattern)
-    (each [key (pattern:gmatch key-re)]
-      (let [val (get-node key) ]
-        (set parsed (parsed:gsub (.. (lit dec-l) key (lit dec-r)) val))))
-    parsed))
+        token-re (.. (lit dec-l) "(.-)" (lit dec-r))]
+    (var compiled pattern)
+    (each [token (pattern:gmatch token-re)]
+      (->> token
+           (value)
+           (compiled:gsub (.. (lit dec-l) token (lit dec-r)))
+           (set compiled)))
+    compiled))
 
 
 (defn patterns [template]
-  "return a table of patterns from [template] string"
+  "takes 'template' raw string and return a substitution dictionary.
+  foo: {{ [token].value }} ... -> { '{{ [token].value }}' = 10 }"
   (let [dec-l (. grammar :p :l)
         dec-r (. grammar :p :r)
         pattern-re (.. (lit dec-l) "(.-)" (lit dec-r))
         xt {}]
     (each [pattern (template:gmatch pattern-re)]
       (->> pattern
-          (compile-tokens)
-          ;(compile-pattern)
+           ; TODO: merge those so that i can just (compile-pattern "-pat-string")
+           ; keep them as separate functions though
+           ; would be cool to have one function and just call it with or without []'s
+          (tokens) ; make initial pass to compile [tokens]
+          (value) ; make second pass to compile varset.vars
           (% xt (.. dec-l pattern dec-r))))
+    ; TODO: where to put compile errors?
     xt))
 
 
-(expose colo "kohi")
-(expose font "fira")
-
-(-> :testrc
-    (template)
-    (patterns)
-    (pretty-print)
-    )
-
+(defn slurp [path]
+  "return file contents as a raw string, accepts 'path'
+  /directory/template -> foo: {{ [token].value }} ..."
+  (with-open
+    [file (io.open path "r")]
+    (let [s (file:read "*a")]
+      s)))
 
 
-;(print (get-node :g.foo))
+(expose
+  {:colo "kohi"
+   :font "fira"
+   :fonts { :fira { :normal 10 }}})
 
 
+(defn compile [template dict]
+  (var compiled template)
+  (each [key val (pairs dict)]
+    (set compiled (compiled:gsub (lit key) val)))
+  compiled)
 
 
+(let [template (slurp :testrc)
+      dict (patterns template)]
+  (pretty-print dict)
+  (print (compile template dict)))
 
-;(-> :kohi
-;    (varset)
-;    (pretty-print)

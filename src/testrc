@@ -1,6 +1,6 @@
 
 nested variable request:
-  { @:-[font.family]-:@}
+  {@:-[font.family]-:@}
 
 partial variable request, partial const request:
   {@:-[colo].color1-:@}
