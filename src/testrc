@@ -1,6 +1,16 @@
 
-font:
-  family: {@:-{font.family}-:@}
+nested variable request:
+  { @:-[font.family]-:@}
 
-colors:
-  red: #{@:-{colo}.color1-:@}
+partial variable request, partial const request:
+  {@:-[colo].color1-:@}
+
+multi variable request
+  {@:-fonts.[font].normal-:@}
+
+cont request / weird name
+  {@:-i'm a const-:@}
+
+empty
+  {@:--:@}
+
