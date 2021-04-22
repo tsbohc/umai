@@ -1,3 +1,7 @@
+; {{{
+; # blossom
+; A .files management tool with a twist: 99% of the configuration is embedded in the .files themselves. Paired with powerful templating, this encourages composition over inheritance.
+
 ; variables are not meant to be modified
 ; do not define vars inside functions
 ; -- not using local, var, or set in functions
@@ -24,10 +28,7 @@
 ; f g h     - functions
 ; re        - regular expression
 
-(global inspect (require :inspect))
 
-; TODO:
-; - find a better way to use grammar and (lit), sting:lit?
 
 ; step 1, get raw template
 ; color1: "#{@:-[colo].color1-:@}"
@@ -43,6 +44,14 @@
 
 ; step 5, perform substitution on raw template
 ; color1: "#ff0000"
+; }}}
+
+; TODO:
+; - find a better way to use grammar and (lit), sting:lit?
+; - lush support
+; - environmenal variables insead of configuration?
+
+(global inspect (require :inspect))
 
 ; {{{ lib
 (macro when-not [cond ...]
@@ -155,7 +164,7 @@
 ; --- varset ---
 
 (defn varset-list []
-  "retrieve varsets list once and returns it on subsequent calls"
+  "retrieve varsets list"
   (with-open
     [file (assert (io.popen "find varsets -type f" "r"))]
     (let [xs []]
@@ -246,6 +255,8 @@
 
 (expose
   {:colo "kohi"
+   ;:colo "lush"
+   ;:lush (require :lush)
    :font "fira"
    :fonts { :fira { :normal 10 }}})
 
@@ -257,8 +268,174 @@
   compiled)
 
 
-(let [template (slurp :testrc)
-      dict (patterns template)]
-  (pretty-print dict)
-  (print (compile template dict)))
+;(let [template (slurp :testrc)
+;      dict (patterns template)]
+;  (pretty-print dict)
+;  (print (compile template dict)))
+
+; new plan
+; straight nesting: {% {colo}.color1 %}
+; parse recursively
+
+; i could either use same decorator and parse string by hand,
+; or use a special decorator for top-level patterns and regex that -- probably this
+; OR got from leaves to brances and copile everything recursively until there're no patterns left
+
+(defn dec [s d lit?]
+  ; FIXME: naive implementation
+  (local grammar
+    {:pat {:l "{% " :r " %}"}
+     :exp {:l "{@!-" :r "-!@}"}
+     :var {:l "{"    :r    "}"}})
+
+  (let [l (if lit?
+            (lit (. grammar d :l))
+            (. grammar d :l))
+        r (if lit?
+            (lit (. grammar d :r))
+            (. grammar d :r))]
+    (.. l s r)))
+
+
+; {
+;   "{% colo %}" = "_colo",
+;   "{% {colo}.color1 %}" = {
+;       { "{colo}" = "_colo" }
+;   }
+; }
+
+; (a) (b (c))
+; a = _a
+; b = { c = _c }
+
+(defn testing []
+  (var ss "color1: {% {colo}.color1 %}")
+
+  (var test
+    {:beverage "coffee"
+     :mood "happy"
+     :emoji { :happy "uwu" :sad "-w-"}
+     :dessert { :name "waffles" :garnish "cherry jam"}
+     :ff0000 "waffle"})
+
+  ; {{{
+  ; will only match letters in (...), so bottom level in any string
+  ;(var re "%((%a+)%)")
+  ;(var ss "(a (b)) (c)")
+  ;(each [m (ss:gmatch re)]
+  ;  (print m))
+
+  ; getting my feet wet
+  ;(defn less-10 [n]
+  ;  (< n 10))
+
+  ;(defn increment [n]
+  ;  (+ n 1))
+
+  ;(defn up-to-3 [i]
+  ;  (print (.. "up! " i))
+  ;  (if (less-10 i)
+  ;    (let [res (increment i)]
+  ;      (up-to-3 res))
+  ;    i))
+
+  ;(print (up-to-3 5))
+
+  ; i don't need a loop, since i'm recursively doing this anyway
+  ;(defn compile [pat]
+  ;  (var pat)
+  ;  (let [expr-re (dec "(%a+)" :var)]
+  ;    (each [key (pat:gmatch expr-re)]
+  ;      (let [val (get-node test key)]
+  ;        (set pat (pat:gsub "")))))
+  ;  (pat:gsub "{colo}" "woo"))
+  ; }}}
+
+  ; {%- ... -%} statement
+  ;    {...}    expression ... ehhh, needs a better name
+
+  ; check for mismatched brackets?
+  ; max recursion depth?
+
+  ; distilled recursive magic
+  (defn has-expr? [s]
+    (let [expr-re (dec "([%w.]+)" :var true)]
+      (if (s:find expr-re) true false)))
+
+  (defn compile [pat]
+    (let [expr-re (dec "([%w.]+)":var)
+          key (pat:match expr-re)
+          val (or (get-node test key) "")]
+      (pat:gsub (dec key :var true) val)))
+
+  (defn rec-compile [pat]
+    (if (has-expr? pat)
+      (rec-compile (compile pat))
+      pat))
+
+  ; FIXME: {kohi} ended up in an endless loop
+  (var tt "{beverage} and {dessert.name} with {dessert.garnish}! {emoji.{mood}}")
+  (print (rec-compile tt))
+
+  ; TODO: just define capture groups somewhere for patterns, vars, etc...
+
+;  (defn rec-parse [pat]
+;    (print "---")
+;    (var ppat pat)
+;    (print (.. "in: " pat))
+;    (if (has-expr? pat)
+;      (let [va-re (dec "(%a+)" :var true)]
+;        (print "ya")
+;        (each [va (pat:gmatch va-re)]
+;          (let [value (get-node test va)
+;                pat (pat:gsub (dec va :var true) value)]
+;            (print (.. "re: " pat))
+;            (rec-parse pat))))
+;      ppat))
+;
+;  (print (rec-parse "{colo}"))
+
+  ; first, parse the string into nested table
+  ;(defn patterns [s]
+  ;  (let [pat-re (dec "(.-)" :pat true)
+  ;        xt {}]
+  ;    (each [pat (s:gmatch pat-re)]
+  ;      ; recursively parse each pattern here
+  ;      ;(tset xt (dec pat :pat) (rec-parse pat))
+  ;      (print (rec-parse pat))
+  ;      )
+  ;    xt))
+
+  ;(->> ss
+  ;     (patterns)
+  ;     (pretty-print)
+  ;     )
+
+
+)
+
+(testing)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

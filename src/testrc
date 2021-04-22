@@ -1,16 +1,12 @@
 
-nested variable request:
-  {@:-[font.family]-:@}
+nested variable request: {@:-[font.family]-:@}
 
-partial variable request, partial const request:
-  {@:-[colo].color1-:@}
+partial variable request, partial const request:: {@:-[colo].color1-:@}
 
-multi variable request
-  {@:-fonts.[font].normal-:@}
+multi variable request: {@:-fonts.[font].normal-:@}
 
-cont request / weird name
-  {@:-i'm a const-:@}
+cont request / weird name: {@:-i'm a const-:@}
 
-empty
-  {@:--:@}
+empty: {@:--:@}
 
+bare varset: {@:-kohi-:@}
