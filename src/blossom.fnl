@@ -139,6 +139,8 @@
 
 ; }}}
 
+; __exposed is a singleton, but nothing modifies it apart from this function
+; it's just a shortcut for configuration
 (defn expose [xt]
   (if (nil? _G.__exposed)
     (global __exposed {}))
@@ -235,8 +237,7 @@
 
 
 (defn slurp [path]
-  "return file contents as a raw string, accepts 'path'
-  /directory/template -> foo: {{ [token].value }} ..."
+  "return file contents as a string, accepts 'path'"
   (with-open
     [file (io.open path "r")]
     (let [s (file:read "*a")]
