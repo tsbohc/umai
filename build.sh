@@ -1,7 +1,7 @@
 #!/bin/sh
 # NB: we're in sh
 
-# pack everything into a single binary,
+# pack everything into a single binary
 cd src
 fennel --compile --require-as-include blossom.fnl > ../blossom
 

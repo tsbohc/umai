@@ -1,4 +1,96 @@
 #!/usr/bin/env lua
+package.preload["memoize"] = package.preload["memoize"] or function(...)
+  local memoize = {
+    _VERSION     = 'memoize v2.0',
+    _DESCRIPTION = 'Memoized functions in Lua',
+    _URL         = 'https://github.com/kikito/memoize.lua',
+    _LICENSE     = [[
+      MIT LICENSE
+      Copyright (c) 2018 Enrique García Cota
+      Permission is hereby granted, free of charge, to any person obtaining a
+      copy of this software and associated documentation files (the
+      "Software"), to deal in the Software without restriction, including
+      without limitation the rights to use, copy, modify, merge, publish,
+      distribute, sublicense, and/or sell copies of the Software, and to
+      permit persons to whom the Software is furnished to do so, subject to
+      the following conditions:
+      The above copyright notice and this permission notice shall be included
+      in all copies or substantial portions of the Software.
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+      OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+      MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+      IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+      CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+      TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+      SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    ]]
+  }
+  -- Inspired by http://stackoverflow.com/questions/129877/how-do-i-write-a-generic-memoize-function
+  
+  -- Lua 5.3 compatibility
+  local unpack = unpack or table.unpack
+  
+  -- private stuff
+  
+  local function is_callable(f)
+    local tf = type(f)
+    if tf == 'function' then return true end
+    if tf == 'table' then
+      local mt = getmetatable(f)
+      return type(mt) == 'table' and is_callable(mt.__call)
+    end
+    return false
+  end
+  
+  local function cache_get(cache, params)
+    local node = cache
+    for i=1, #params do
+      node = node.children and node.children[params[i]]
+      if not node then return nil end
+    end
+    return node.results
+  end
+  
+  local function cache_put(cache, params, results)
+    local node = cache
+    local param
+    for i=1, #params do
+      param = params[i]
+      node.children = node.children or {}
+      node.children[param] = node.children[param] or {}
+      node = node.children[param]
+    end
+    node.results = results
+  end
+  
+  -- public function
+  
+  function memoize.memoize(f, cache)
+    cache = cache or {}
+  
+    if not is_callable(f) then
+      error(string.format(
+              "Only functions and callable tables are memoizable. Received %s (a %s)",
+               tostring(f), type(f)))
+    end
+  
+    return function (...)
+      local params = {...}
+  
+      local results = cache_get(cache, params)
+      if not results then
+        results = { f(...) }
+        cache_put(cache, params, results)
+      end
+  
+      return unpack(results)
+    end
+  end
+  
+  setmetatable(memoize, { __call = function(_, ...) return memoize.memoize(...) end })
+  
+  return memoize
+end
 package.preload["inspect"] = package.preload["inspect"] or function(...)
   local inspect ={
     _VERSION = 'inspect.lua 3.1.0',
@@ -330,172 +422,104 @@ package.preload["inspect"] = package.preload["inspect"] or function(...)
   
   return inspect
 end
-inspect = require("inspect")
-__cache = {}
-local function lit(s)
-  local function _0_(c)
-    return ("%" .. c)
-  end
-  return s:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", _0_)
-end
-local function split(s, d)
-  local s0 = (s .. d)
-  local xs = {}
-  for m in s0:gmatch(("(.-)" .. lit(d))) do
-    table.insert(xs, m)
-  end
-  return xs
-end
-local function nil_3f(v)
-  return (v == nil)
-end
-local function string_3f(v)
-  return (type(v) == "string")
-end
-local function seq_3f(xs)
-  local i = 0
-  for _ in pairs(xs) do
-    i = (i + 1)
-    if nil_3f(xs[i]) then
-      return false
+local util = nil
+package.preload["util"] = package.preload["util"] or function(...)
+  local function seq_3f(xs)
+    local i = 0
+    for _ in pairs(xs) do
+      i = (i + 1)
+      if (nil == xs[i]) then
+        return false
+      end
     end
+    return true
   end
-  return true
-end
-local function contains_3f(xt, y)
-  if seq_3f(xt) then
-    for _, v in ipairs(xt) do
-      if (v == y) then
+  local function has_3f(xt, y)
+    if seq_3f(xt) then
+      for _, v in ipairs(xt) do
+        if (v == y) then
+          return true
+        end
+      end
+    else
+      if (nil ~= xt[y]) then
         return true
       end
     end
-  else
-    if (nil ~= xt[y]) then
-      return true
-    end
+    return false
   end
-  return false
+  return {["has?"] = has_3f, ["seq?"] = seq_3f}
 end
+util = require("util")
+inspect = require("inspect")
+local _memoize = require("memoize")
 local function pretty_print(...)
   return print(inspect(...))
 end
-local function expose(xt)
-  if nil_3f(_G.__exposed) then
-    __exposed = {}
+local test = {beverage = "coffee", colo = "kohi", dessert = {garnish = "cherry jam", name = "waffles"}, emoji = {happy = "uwu", sad = "-w-"}, ff0000 = "waffle", mood = "happy"}
+do
+  local function escape(s)
+    local function _0_(c)
+      return ("%" .. c)
+    end
+    return s:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", _0_)
   end
-  for k, v in pairs(xt) do
-    __exposed[k] = v
-  end
-  return nil
+  local mt = getmetatable("")
+  mt["__index"]["escape"] = escape
 end
-grammar = {e = {l = "{@!-", r = "-!@}"}, p = {l = "{@:-", r = "-:@}"}, v = {l = "[", r = "]"}}
-local function varset_list()
-  local file = assert(io.popen("find varsets -type f", "r"))
-  local function close_handlers_0_(ok_0_, ...)
-    file:close()
-    if ok_0_ then
-      return ...
+local function lex(x, _3fy, _3fz)
+  assert((nil ~= x), string.format("Missing argument %s on %s:%s", "x", "blossom.fnl", 36))
+  local pat_l = "{%-"
+  local pat_r = "-%}"
+  local token_l = "{"
+  local token_r = "}"
+  if (_3fy == nil) then
+    local _0_0 = x
+    if (_0_0 == "pat-re") then
+      return (pat_l:escape() .. "(.-)" .. pat_r:escape())
+    elseif (_0_0 == "token-re") then
+      return (token_l:escape() .. "([%w.]+)" .. token_r:escape())
     else
-      return error(..., 0)
+      local _ = _0_0
+      return error(("lex contains no such key: " .. x))
     end
-  end
-  local function _0_()
-    local xs = {}
-    for line in file:lines() do
-      local function _2_()
-        local _1_0 = line:gsub("varsets/", "")
-        return _1_0
-      end
-      table.insert(xs, _2_())
-    end
-    return xs
-  end
-  return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
-end
-local function varset(name)
-  local file = io.open(("varsets/" .. name), "r")
-  local function close_handlers_0_(ok_0_, ...)
-    file:close()
-    if ok_0_ then
-      return ...
-    else
-      return error(..., 0)
-    end
-  end
-  local function _0_()
-    local comment_re = "%s*!"
-    local keyval_re = "(%w+):%s*(%w+)"
-    local xt = {}
-    for line in file:lines() do
-      if not (line:match(comment_re) or (line == "")) then
-        local key, val = line:match(keyval_re)
-        xt[key] = val
-      end
-    end
-    return xt
-  end
-  return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
-end
-local function get_node(xt, dots)
-  local v = xt
-  if string_3f(dots) then
-    for w in dots:gmatch("[%w_]+") do
-      if nil_3f(v) then
-      else
-        v = v[w]
-      end
-    end
-    return tostring(v)
-  end
-end
-local function value(dots)
-  local root = (dots:match("(%a+)%.") or dots)
-  local path = dots:gsub((root .. lit(".")), "")
-  local _0_
-  if contains_3f(__exposed, root) then
-    _0_ = get_node(__exposed, dots)
   else
-    local _1_
-    do
-      if nil_3f(_G.__cache["(varset-list)"]) then
-        _G.__cache["(varset-list)"] = varset_list()
+    local _0_0 = _3fy
+    if (_0_0 == "pat") then
+      local _1_
+      if _3fz then
+        _1_ = pat_l
+      else
+        _1_ = pat_l:escape()
       end
-      _1_ = _G.__cache["(varset-list)"]
-    end
-    if contains_3f(_1_, root) then
-      local varset0 = nil
-      do
-        if nil_3f(_G.__cache["(varset root)"]) then
-          _G.__cache["(varset root)"] = varset(root)
+      local function _3_()
+        if _3fz then
+          return pat_r
+        else
+          return pat_r:escape()
         end
-        varset0 = _G.__cache["(varset root)"]
       end
-      _0_ = get_node(varset0, path)
+      return (_1_ .. x .. _3_())
+    elseif (_0_0 == "token") then
+      local _1_
+      if _3fz then
+        _1_ = token_l
+      else
+        _1_ = token_l:escape()
+      end
+      local function _3_()
+        if _3fz then
+          return token_r
+        else
+          return token_r:escape()
+        end
+      end
+      return (_1_ .. x .. _3_())
     else
-    _0_ = nil
+      local _ = _0_0
+      return error(("lex contains no such key: " .. _3fy))
     end
   end
-  return (_0_ or "")
-end
-local function tokens(pattern)
-  local dec_l = grammar.v.l
-  local dec_r = grammar.v.r
-  local token_re = (lit(dec_l) .. "(.-)" .. lit(dec_r))
-  local compiled = pattern
-  for token in pattern:gmatch(token_re) do
-    compiled = compiled:gsub((lit(dec_l) .. token .. lit(dec_r)), value(token))
-  end
-  return compiled
-end
-local function patterns(template)
-  local dec_l = grammar.p.l
-  local dec_r = grammar.p.r
-  local pattern_re = (lit(dec_l) .. "(.-)" .. lit(dec_r))
-  local xt = {}
-  for pattern in template:gmatch(pattern_re) do
-    xt[(dec_l .. pattern .. dec_r)] = value(tokens(pattern))
-  end
-  return xt
 end
 local function slurp(path)
   local file = io.open(path, "r")
@@ -513,62 +537,96 @@ local function slurp(path)
   end
   return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
 end
-expose({colo = "kohi", font = "fira", fonts = {fira = {normal = 10}}})
-local function compile(template, dict)
-  local compiled = template
-  for key, val in pairs(dict) do
-    compiled = compiled:gsub(lit(key), val)
-  end
-  return compiled
-end
-local function dec(s, d, lit_3f)
-  local grammar0 = {exp = {l = "{@!-", r = "-!@}"}, pat = {l = "{%- ", r = " -%}"}, var = {l = "{", r = "}"}}
-  local l = nil
-  if lit_3f then
-    l = lit((grammar0)[d].l)
-  else
-    l = (grammar0)[d].l
-  end
-  local r = nil
-  if lit_3f then
-    r = lit((grammar0)[d].r)
-  else
-    r = (grammar0)[d].r
-  end
-  return (l .. s .. r)
-end
-local function testing()
-  local test = {beverage = "coffee", dessert = {garnish = "cherry jam", name = "waffles"}, emoji = {happy = "uwu", sad = "-w-"}, ff0000 = "waffle", mood = "happy"}
-  local function has_expr_3f(s)
-    local expr_re = dec("([%w.]+)", "var", true)
-    if s:find(expr_re) then
-      return true
+local varset_list = nil
+local function _0_()
+  local file = assert(io.popen("find varsets -type f", "r"))
+  local function close_handlers_0_(ok_0_, ...)
+    file:close()
+    if ok_0_ then
+      return ...
     else
-      return false
+      return error(..., 0)
     end
   end
-  local function compile0(pat)
-    local expr_re = dec("([%w.]+)", "var", true)
-    local key = pat:match(expr_re)
-    local val = get_node(test, key)
-    return pat:gsub(dec(key, "var", true), val)
+  local function _1_()
+    local xs = {}
+    for line in file:lines() do
+      local function _3_()
+        local _2_0 = line:gsub("varsets/", "")
+        return _2_0
+      end
+      table.insert(xs, _3_())
+    end
+    return xs
   end
-  local function rec_compile(pat)
-    if has_expr_3f(pat) then
-      return rec_compile(compile0(pat))
+  return close_handlers_0_(xpcall(_1_, (package.loaded.fennel or debug).traceback))
+end
+varset_list = _memoize(_0_)
+local varset = nil
+local function _1_(name)
+  local file = assert(io.open(("varsets/" .. name), "r"))
+  local function close_handlers_0_(ok_0_, ...)
+    file:close()
+    if ok_0_ then
+      return ...
     else
-      return pat
+      return error(..., 0)
     end
   end
-  local tt = "{%- {beverage} and {dessert.name} with {dessert.garnish}! {emoji.{mood}} -%}"
-  local function patterns0(s)
-    local pat_re = dec("(.-)", "pat", true)
+  local function _2_()
+    local comment_re = "%s*!"
+    local keyval_re = "(%w+):%s*(%w+)"
     local xt = {}
-    for pat in s:gmatch(pat_re) do
-      xt[dec(pat, "pat")] = rec_compile(pat)
+    for line in file:lines() do
+      if not (line:match(comment_re) or (line == "")) then
+        local key, val = line:match(keyval_re)
+        xt[key] = val
+      end
     end
     return xt
   end
-  return pretty_print(patterns0(tt))
+  return close_handlers_0_(xpcall(_2_, (package.loaded.fennel or debug).traceback))
 end
-return testing()
+varset = _memoize(_1_)
+varset("arst")
+local function get_node(xt, dots)
+  local v = xt
+  if (type(dots) == "string") then
+    for w in dots:gmatch("[%w_]+") do
+      if (v == nil) then
+      else
+        v = v[w]
+      end
+    end
+    if not ((type(v) == "number") or (type(v) == "string")) then
+      return error(("token '" .. dots .. "' could not be compiled"))
+    else
+      return v
+    end
+  end
+end
+local function token_value(dots)
+  return dots
+end
+local function tokens_3f(s)
+  if s:find(lex("token-re")) then
+    return true
+  else
+    return false
+  end
+end
+local function compile_token(s)
+  local key = s:match(lex("token-re"))
+  local val = get_node(test, key)
+  local _2_0 = s:gsub(lex(key, "token"), val)
+  return _2_0
+end
+local function compile_tokens(s)
+  if tokens_3f(s) then
+    return compile_tokens(compile_token(s))
+  else
+    return s
+  end
+end
+local tt = "{%- {{colo.color1 {beverage} and {dessert.name} with {dessert.garnish}! {emoji.{mood}} -%}"
+return print(compile_tokens(tt))
