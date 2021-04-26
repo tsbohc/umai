@@ -9,11 +9,11 @@ Think of it as making your .files aware what they have to contain, where to get 
 # config.yml
 {%-
 cyan: "#{{colo}.cyan}"
--%}'
+-%}
 ```
 ```bash
-; .bashrc
-BLOSSOM_COLO="limestone"
+# .bashrc
+blossom_colo="limestone"
 ```
 ```yaml
 # varsets/limestone
@@ -21,7 +21,7 @@ cyan: 87c0b0
 ```
 ```yaml
 # config.yml  
-cyan: '#87c0b0'
+cyan: "#87c0b0"
 ```
 
 ## WIP
