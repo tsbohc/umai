@@ -30,7 +30,7 @@
   false)
 
 
-{:inspect (require :inspect)
- :memoize (require :memoize)
+{:inspect (require :lib.inspect)
+ :memoize (require :lib.memoize)
  : seq?
  : has?}

@@ -24,7 +24,11 @@
 (fn pretty [...]
   `(print (core.inspect ,...)))
 
+(fn import [name]
+  `(local ,name (require ,(tostring name))))
+
 {
+ : import
  : nil?
  : string?
  : table?
