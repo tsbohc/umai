@@ -1,3 +1,4 @@
+; TODO: move those to core
 (fn nil? [v] `(= ,v nil))
 (fn string? [v] `(= (type ,v) :string))
 (fn table? [v] `(= (type ,v) :table))
@@ -27,7 +28,19 @@
 (fn import [name]
   `(local ,name (require ,(tostring name))))
 
+(fn map [...] `(core.map ,...))
+
+(fn ?? [e r]
+  `(do
+     (print (.. "test: " ,e " " ,(tostring r)))
+     (if (= ,e ,r)
+       (print "pass")
+       (do
+         (print (.. "expected '" (core.inspect ,e) "', received '" (core.inspect ,r) "'"))))
+     (print "")))
+
 {
+ : ??
  : import
  : nil?
  : string?
@@ -39,4 +52,5 @@
  : if-not
  : memoize
  : pretty
+ : map
  }

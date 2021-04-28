@@ -1,6 +1,7 @@
 ; manages blossom's grammar
 
 ; TODO: implementation still naive
+; include _'s and -'s in names
 ; think about usage first, then rewrite
 
 (local g
@@ -30,5 +31,14 @@
 
 (tset lexis :token-re
   (lexis.token-esc "([%w.]+)"))
+
+(tset lexis :token-re-new "({[%w.{}]+})")
+(tset lexis :env "({%%..-.%%})")
+
+(tset lexis :statement "{%  %}")
+(tset lexis :expression "{}")
+
+(tset lexis :statement-re "({%% .- %%})")
+(tset lexis :expression-re "({[%w._%-{}]+})")
 
 lexis

@@ -6,7 +6,7 @@
 
 (memoize _petals []
   (with-open
-    [file (assert (io.popen (.. "find " (get.from-env :ENV) " -name '*.petal' -type f") "r"))]
+    [file (assert (io.popen (.. "find " (get :ENV) " -name '*.umai' -type f") "r"))]
     (let [xt []]
       (each [line (file:lines)]
         (table.insert xt line))

@@ -2,11 +2,10 @@
 package.preload["petals"] = package.preload["petals"] or function(...)
   local core = require("core")
   local get = require("get")
-  local env = "/home/sean/.garden/etc"
   local petals = {}
-  local get_petals = nil
+  local _petals = nil
   local function _0_()
-    local file = assert(io.popen(("find " .. env .. " -name '*.petal' -type f"), "r"))
+    local file = assert(io.popen(("find " .. get("ENV") .. " -name '*.umai' -type f"), "r"))
     local function close_handlers_0_(ok_0_, ...)
       file:close()
       if ok_0_ then
@@ -16,20 +15,157 @@ package.preload["petals"] = package.preload["petals"] or function(...)
       end
     end
     local function _1_()
+      local xt = {}
       for line in file:lines() do
-        print(line)
+        table.insert(xt, line)
       end
-      return nil
+      return xt
     end
     return close_handlers_0_(xpcall(_1_, (package.loaded.fennel or debug).traceback))
   end
-  get_petals = core.memoize(_0_)
-  petals["petals"] = get_petals
+  _petals = core.memoize(_0_)
+  petals["petals"] = _petals
+  local function _1_(_, ...)
+    return petals.petals(...)
+  end
+  setmetatable(petals, {__call = _1_})
   return petals
+end
+package.preload["install"] = package.preload["install"] or function(...)
+  local install = {}
+  local core = require("core")
+  local fs = require("fs")
+  local cache = (os.getenv("HOME") .. "/.config/umai/")
+  install.install = function(rendered)
+    if not fs["exists?"](cache) then
+      fs.mkdir(cache)
+    end
+    if core["has?"](rendered.meta, "target") then
+      local content = rendered.data
+      local path = (cache .. fs.basename(rendered.meta.target))
+      fs.write(path, content)
+      return fs.link(path, rendered.meta.target)
+    else
+      return error("cannot install, no target is specified")
+    end
+  end
+  local function _0_(_, ...)
+    return install.install(...)
+  end
+  setmetatable(install, {__call = _0_})
+  return install
+end
+package.preload["render"] = package.preload["render"] or function(...)
+  local core = require("core")
+  local get = require("get")
+  local lexis = require("lexis")
+  local tokens = require("tokens")
+  local render = {}
+  local function strip(s)
+    return s:sub(4, -4)
+  end
+  render.inject = function(s)
+    return tokens.compile(s)
+  end
+  local sandbox = {}
+  sandbox.target = function(s)
+    return "", {target = s}
+  end
+  sandbox.get = function(s)
+    return get(s)
+  end
+  render.eval = function(s)
+    local f = nil
+    local function _0_()
+      if not s:find("return ") then
+        return ("return " .. s)
+      else
+        return s
+      end
+    end
+    f = load(_0_())
+    core.setfenv(f, sandbox)
+    return f()
+  end
+  local function compile(s)
+    local hs = (s:sub(1, 3) .. s:sub(-3))
+    local cs = strip(s)
+    local _0_0 = hs
+    if (_0_0 == lexis.statement) then
+      if cs:find(lexis["expression-re"]) then
+        return render.inject(cs)
+      else
+        return render.eval(cs)
+      end
+    else
+      local _ = _0_0
+      return s
+    end
+  end
+  render.render = function(xs)
+    local data = {}
+    local meta = {}
+    for _, s in ipairs(xs) do
+      local d, m = compile(s)
+      table.insert(data, d)
+      core["merge!"](meta, m)
+    end
+    return {data = table.concat(data), meta = meta}
+  end
+  local function _0_(_, ...)
+    return render.render(...)
+  end
+  setmetatable(render, {__call = _0_})
+  return render
+end
+package.preload["parse"] = package.preload["parse"] or function(...)
+  local core = require("core")
+  local lexis = require("lexis")
+  local parse = {}
+  parse.parse = function(s)
+    local s0 = s
+    local done_3f = false
+    local xs = {}
+    while not done_3f do
+      local x, y = s0:find(lexis["statement-re"])
+      if (nil ~= x) then
+        table.insert(xs, s0:sub(1, (x - 1)))
+        table.insert(xs, s0:sub(x, y))
+        s0 = s0:sub((y + 1))
+      end
+      if (nil == x) then
+        done_3f = true
+      end
+    end
+    if (core.count(s0) > 0) then
+      table.insert(xs, s0)
+    end
+    return xs
+  end
+  local function _0_(_, ...)
+    return parse.parse(...)
+  end
+  setmetatable(parse, {__call = _0_})
+  return parse
+end
+package.preload["expose"] = package.preload["expose"] or function(...)
+  local expose = {}
+  expose.data = {}
+  expose.expose = function(xt)
+    for k, v in pairs(xt) do
+      expose.data[k] = v
+    end
+    return nil
+  end
+  local function _0_(_, ...)
+    return expose.expose(...)
+  end
+  setmetatable(expose, {__call = _0_})
+  return expose
 end
 package.preload["fs"] = package.preload["fs"] or function(...)
   local fs = {}
-  fs.slurp = function(path)
+  fs.read = function(path)
     local file = assert(io.open(path, "r"))
     local function close_handlers_0_(ok_0_, ...)
       file:close()
@@ -40,10 +176,46 @@ package.preload["fs"] = package.preload["fs"] or function(...)
       end
     end
     local function _0_()
-      local s = file:read("*a")
-      return s
+      return file:read("*a")
     end
     return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
+  end
+  fs.write = function(path, content)
+    local file = assert(io.open(path, "w"))
+    local function close_handlers_0_(ok_0_, ...)
+      file:close()
+      if ok_0_ then
+        return ...
+      else
+        return error(..., 0)
+      end
+    end
+    local function _0_()
+      return file:write(content)
+    end
+    return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
+  end
+  fs.copy = function(source, target)
+    local content = fs.read(source)
+    return fs.write(target, content)
+  end
+  fs.move = function(source, target)
+    return os.rename(source, target)
+  end
+  fs.remove = function(path)
+    return os.remove(path)
+  end
+  fs["exists?"] = function(path)
+    return fs.move(path, path)
+  end
+  fs.mkdir = function(path)
+    return os.execute(("mkdir -p " .. path))
+  end
+  fs.link = function(source, target)
+    return os.execute(("ln -sf " .. source .. " " .. target))
+  end
+  fs.basename = function(path)
+    return path:match(".*/(.-)$")
   end
   return fs
 end
@@ -51,7 +223,7 @@ package.preload["varset"] = package.preload["varset"] or function(...)
   local core = require("core")
   local fs = require("fs")
   local varset = {}
-  local varset_list = nil
+  local _list = nil
   local function _0_()
     local file = assert(io.popen("find varsets -type f", "r"))
     local function close_handlers_0_(ok_0_, ...)
@@ -75,8 +247,8 @@ package.preload["varset"] = package.preload["varset"] or function(...)
     end
     return close_handlers_0_(xpcall(_1_, (package.loaded.fennel or debug).traceback))
   end
-  varset_list = core.memoize(_0_)
-  local varset_get = nil
+  _list = core.memoize(_0_)
+  local _get = nil
   local function _1_(name)
     local file = assert(io.open(("varsets/" .. name), "r"))
     local function close_handlers_0_(ok_0_, ...)
@@ -101,9 +273,9 @@ package.preload["varset"] = package.preload["varset"] or function(...)
     end
     return close_handlers_0_(xpcall(_2_, (package.loaded.fennel or debug).traceback))
   end
-  varset_get = core.memoize(_1_)
-  varset["list"] = varset_list
-  varset["get"] = varset_get
+  _get = core.memoize(_1_)
+  varset["list"] = _list
+  varset["get"] = _get
   local function _2_(_, ...)
     return varset.get(...)
   end
@@ -113,12 +285,13 @@ end
 package.preload["get"] = package.preload["get"] or function(...)
   local core = require("core")
   local varset = require("varset")
+  local expose = require("expose")
   local get = {}
   local function fe(xt, path)
     return xt[path]
   end
-  get["from-env"] = function(s)
-    return os.getenv(("blossom_" .. s))
+  get["from-exp"] = function(s)
+    return fe(expose.data, s)
   end
   get["from-var"] = function(s)
     local root = s:match("(%w+)%.")
@@ -132,7 +305,7 @@ package.preload["get"] = package.preload["get"] or function(...)
     end
   end
   get.get = function(s)
-    local v = (get["from-env"](s) or get["from-var"](s))
+    local v = (get["from-exp"](s) or get["from-var"](s))
     if (v == nil) then
       return error(("value of token '" .. s .. "' could not be found."))
     else
@@ -162,6 +335,12 @@ package.preload["lexis"] = package.preload["lexis"] or function(...)
   end
   lexis["pattern-re"] = lexis["pattern-esc"]("(.-)")
   lexis["token-re"] = lexis["token-esc"]("([%w.]+)")
+  lexis["token-re-new"] = "({[%w.{}]+})"
+  lexis["env"] = "({%%..-.%%})"
+  lexis["statement"] = "{%  %}"
+  lexis["expression"] = "{}"
+  lexis["statement-re"] = "({%% .- %%})"
+  lexis["expression-re"] = "({[%w._%-{}]+})"
   return lexis
 end
 package.preload["tokens"] = package.preload["tokens"] or function(...)
@@ -192,7 +371,29 @@ package.preload["tokens"] = package.preload["tokens"] or function(...)
   return tokens
 end
 local core = nil
-package.preload["memoize"] = package.preload["memoize"] or function(...)
+package.preload["lib.setfenv"] = package.preload["lib.setfenv"] or function(...)
+  local function setfenv(fn, env)
+    local i = 1
+    while true do
+      local name = debug.getupvalue(fn, i)
+      if name == "_ENV" then
+        debug.upvaluejoin(fn, i, (function()
+          return env
+        end), 1)
+        break
+      elseif not name then
+        break
+      end
+  
+      i = i + 1
+    end
+  
+    return fn
+  end
+  
+  return setfenv
+end
+package.preload["lib.memoize"] = package.preload["lib.memoize"] or function(...)
   local memoize = {
     _VERSION     = 'memoize v2.0',
     _DESCRIPTION = 'Memoized functions in Lua',
@@ -284,7 +485,7 @@ package.preload["memoize"] = package.preload["memoize"] or function(...)
   
   return memoize
 end
-package.preload["inspect"] = package.preload["inspect"] or function(...)
+package.preload["lib.inspect"] = package.preload["lib.inspect"] or function(...)
   local inspect ={
     _VERSION = 'inspect.lua 3.1.0',
     _URL     = 'http://github.com/kikito/inspect.lua',
@@ -625,10 +826,34 @@ package.preload["core"] = package.preload["core"] or function(...)
       _0_0 = s:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", _1_)
       return _0_0
     end
+    local function fragmentate(s, pattern, xs)
+      local xs0 = (xs or {})
+      local from, to, token = s:find(pattern)
+      if token then
+        local raw = s:sub(1, (from - 1))
+        local s0 = s:sub((to + 1))
+        table.insert(xs0, raw)
+        table.insert(xs0, token)
+        return fragmentate(s0, pattern, xs0)
+      else
+        if (s ~= "") then
+          table.insert(xs0, s)
+        end
+        return xs0
+      end
+    end
     local mt = getmetatable("")
     mt["__index"]["escape"] = escape
+    mt["__index"]["fragmentate"] = fragmentate
   end
-  local function seq_3f(xs)
+  local core = {}
+  core["nil?"] = function(x)
+    return (nil == x)
+  end
+  core["table?"] = function(x)
+    return ("table" == type(x))
+  end
+  core["seq?"] = function(xs)
     local i = 0
     for _ in pairs(xs) do
       i = (i + 1)
@@ -638,8 +863,8 @@ package.preload["core"] = package.preload["core"] or function(...)
     end
     return true
   end
-  local function has_3f(xt, y)
-    if seq_3f(xt) then
+  core["has?"] = function(xt, y)
+    if core["seq?"](xt) then
       for _, v in ipairs(xt) do
         if (v == y) then
           return true
@@ -652,11 +877,130 @@ package.preload["core"] = package.preload["core"] or function(...)
     end
     return false
   end
-  return {["has?"] = has_3f, ["seq?"] = seq_3f, inspect = require("inspect"), memoize = require("memoize")}
+  core["even?"] = function(n)
+    return ((n % 2) == 0)
+  end
+  core["odd?"] = function(n)
+    return not core["even?"](n)
+  end
+  core.count = function(xs)
+    if core["table?"](xs) then
+      local maxn = 0
+      for k, v in pairs(xs) do
+        maxn = (maxn + 1)
+      end
+      return maxn
+    elseif not xs then
+      return 0
+    else
+      return #xs
+    end
+  end
+  core["run!"] = function(f, xs)
+    if xs then
+      local nxs = core.count(xs)
+      if (nxs > 0) then
+        for i = 1, nxs do
+          f(xs[i])
+        end
+        return nil
+      end
+    end
+  end
+  core.map = function(f, xs)
+    local result = {}
+    local function _0_(x)
+      local mapped = f(x)
+      local function _1_()
+        if (0 == select("#", mapped)) then
+          return nil
+        else
+          return mapped
+        end
+      end
+      return table.insert(result, _1_())
+    end
+    core["run!"](_0_, xs)
+    return result
+  end
+  core.reduce = function(f, init, xs)
+    local result = init
+    local function _0_(x)
+      result = f(result, x)
+      return nil
+    end
+    core["run!"](_0_, xs)
+    return result
+  end
+  core["merge!"] = function(base, ...)
+    local function _0_(acc, m)
+      if m then
+        for k, v in pairs(m) do
+          acc[k] = v
+        end
+      end
+      return acc
+    end
+    return core.reduce(_0_, (base or {}), {...})
+  end
+  core.merge = function(...)
+    return core["merge!"]({}, ...)
+  end
+  core.get = function(xt, k, d)
+    local res = nil
+    if core["table?"](xt) then
+      res = xt[k]
+    else
+    res = nil
+    end
+    if core["nil?"](res) then
+      return d
+    else
+      return res
+    end
+  end
+  core["get-in"] = function(xt, ks, d)
+    local res = nil
+    local function _0_(acc, k)
+      if core["table?"](acc) then
+        return core.get(acc, k)
+      end
+    end
+    res = core.reduce(_0_, xt, ks)
+    if core["nil?"](res) then
+      return d
+    else
+      return res
+    end
+  end
+  core["get-dp"] = function(xt, s, d)
+    local ks = {}
+    for w in s:gmatch("[%w_]+") do
+      table.insert(ks, w)
+    end
+    return core["get-in"](xt, ks, d)
+  end
+  core.inspect = require("lib.inspect")
+  core.memoize = require("lib.memoize")
+  core.setfenv = require("lib.setfenv")
+  return core
 end
 core = require("core")
 local tokens = require("tokens")
-local tt = "{%- {kohi.color2} -%}"
-print(tokens.compile(tt))
+local fs = require("fs")
+local lexis = require("lexis")
+local expose = require("expose")
+local parse = require("parse")
+local render = require("render")
+local install = require("install")
 local petals = require("petals")
-return petals.petals()
+expose({ENV = "/home/sean/.garden/etc"})
+local se = {}
+se.ENV = "/home/sean/.garden/etc"
+se.colo = "kohi"
+expose(se)
+local function make(path)
+  print(("installing: " .. path))
+  return install(render(parse(fs.read(path))))
+end
+return core.map(make, petals())

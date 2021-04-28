@@ -1,6 +1,7 @@
 (require-macros :macros)
 (local core (require :core))
 (local varset (require :varset))
+(local expose (require :expose))
 
 (local get {})
 
@@ -14,14 +15,15 @@
 (fn fe [xt path]
   (. xt path))
 
-; TODO: ?
 ; (fn get.arg [s])
 
 ; (fn get.from-lush [s])
 
-(fn get.from-env [s]
-  ; TODO: separate pattern out into lexis?
-  (os.getenv (.. "BLOSSOM_" s)))
+;(fn get.from-env [s]
+;  (os.getenv (.. "BLOSSOM_" s)))
+
+(fn get.from-exp [s]
+  (fe expose.data s))
 
 
 (fn get.from-var [s]
@@ -35,7 +37,7 @@
 
 
 (fn get.get [s]
-  (let [v (or (get.from-env s) (get.from-var s))]
+  (let [v (or (get.from-exp s) (get.from-var s))]
     (if (nil? v)
       (error (.. "value of token '" s "' could not be found."))
       v)))
