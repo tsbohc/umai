@@ -1,7 +1,7 @@
 (local fs {})
 
+
 (fn fs.read [path]
-  "return file contents as a string"
   (with-open [file (assert (io.open path "r"))]
     (file:read "*a")))
 

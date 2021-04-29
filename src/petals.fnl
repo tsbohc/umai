@@ -4,6 +4,7 @@
 
 (local petals {})
 
+
 (memoize _petals []
   (with-open
     [file (assert (io.popen (.. "find " (get :ENV) " -name '*.umai' -type f") "r"))]
@@ -14,6 +15,6 @@
 
 (tset petals :petals _petals)
 
-(setmetatable petals {:__call (fn [_ ...] (petals.petals ...))})
 
+(setmetatable petals {:__call (fn [_ ...] (petals.petals ...))})
 petals

@@ -1,56 +1,60 @@
 (local core (require :core))
 (local get (require :get))
 (local lexis (require :lexis))
-(local tokens (require :tokens))
+(local sandbox (require :sandbox))
 (local render {})
 
-(fn strip [s]
-  ; TODO: strip whitespace
-  "remove handles from string"
-  (s:sub 4 -4))
+
+(fn inject? [s]
+  "check if string 's' contains a {token}"
+  (if (s:find lexis.token-re) true false))
+
+
+(fn inject-single [s]
+  "render a leaf-most {token} in string 's'"
+  (let [key (s:match lexis.token-re)
+        val (get key)]
+    (pick-values 1 (s:gsub (lexis.token-esc key) val))))
 
 
 (fn render.inject [s]
-  ; TODO: transfer this call to (get "value")
-  (tokens.compile s))
+  "recursively render {tokens} in string 's'"
+  ; TODO: check for max recursion depth?
+  (if (inject? s)
+    (render.inject (inject-single s))
+    s))
 
 
-(local sandbox {})
-
-(fn sandbox.target [s]
-  (values "" {:target s}))
-
-(fn sandbox.get [s]
-  (get s))
-
-
-(fn render.eval [s]
+(fn render.evaluate [s]
+  "evaluate arbitrary lua code in a sandbox"
   (let [f (load (if (not (s:find "return ")) (.. "return " s) s))]
     (core.setfenv f sandbox)
     (f)))
 
 
-(fn compile [s]
+(fn render-single [s]
+  "render single fragment"
   (let [hs (.. (s:sub 1 3) (s:sub -3))
-        cs (strip s)]
+        cs (s:sub 4 -4)]
     (match hs
       lexis.statement
       (if (cs:find lexis.expression-re)
         (render.inject cs)
-        (render.eval cs))
+        (render.evaluate cs))
       _ s)
     ))
 
 
 (fn render.render [xs]
+  "render fragment into data and meta"
   (let [data []
         meta {}]
     (each [_ s (ipairs xs)]
-      (let [(d m) (compile s)]
+      (let [(d m) (render-single s)]
         (table.insert data d)
         (core.merge! meta m)))
     {:data (table.concat data) :meta meta}))
 
-(setmetatable render {:__call (fn [_ ...] (render.render ...))})
 
+(setmetatable render {:__call (fn [_ ...] (render.render ...))})
 render

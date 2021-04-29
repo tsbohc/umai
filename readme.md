@@ -1,7 +1,7 @@
 # umai
 A .files management tool and a templating engine with a twist: there's no configuration file.
 
-umai will search a directory tree for *.umai templates, render each of them to a separate folder, and symlink the results to the target locations specified within the templates themselves.
+umai will search a directory tree for .umai templates, render each of them to a separate folder, and symlink the results to the target locations specified within the templates themselves.
 
 ## features
 

@@ -5,17 +5,8 @@
 
 (local get {})
 
-;(fn fetch [xt dots]
-;  "retrieve value from table 'xt' by 'dots' dot-path"
-;  (var v xt)
-;  (each [w (dots:gmatch "[%w_]+")]
-;    (if (nil? v) nil (set v (. v w)))))
-
-; FIXME: naive
 (fn fe [xt path]
   (. xt path))
-
-; (fn get.arg [s])
 
 ; (fn get.from-lush [s])
 
@@ -44,5 +35,4 @@
 
 
 (setmetatable get {:__call (fn [_ ...] (get.get ...))})
-
 get
