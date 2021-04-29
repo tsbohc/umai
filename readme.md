@@ -1,30 +1,44 @@
-# blossom
-A .files management tool with a twist: there is no configuration file. Almost everything is embedded in the .files themselves, the rest is handled through environmental variables.
+# umai
+A .files management tool and a templating engine with a twist: there's no configuration file.
+
+umai will search a directory tree for *.umai templates, render each of them to a separate folder, and symlink the results to the target locations specified within the templates themselves.
 
 ## features
-A single lua script with no extra dependencies, nearly 0-config.
+
+#### minimalist
+- written in fennel, a lisp that compiles to lua
+- binary is a single lua script, no dependencies
+- nearly 0-config
 
 #### templating
-Blossom evaluates `{tokens}` recursively, up to any level of nesting. Values are fetched from environmental variables or xdefaults-like varsets. There's no need to convert colorschemes to a different format.
+- expressions
+  - have implicit context, no need to specify where to pull values from
+  - support any level of nesting
+- statements
+  - sandboxed evaluation of any arbitrary lua code
+  - extendable sandbox
+- metadata
+  - templates determine their own metadata during evaluation
+  - used for additional instructions, such as post install hooks
 
 ## example
 
-```yaml
-# config.petal
-{%-
-cyan: "#{{colo}.cyan}"
--%}
 ```
-```bash
-# .bashrc
-blossom_colo="limestone"
+# .files/testrc.umai
+{% target "~/.config/testrc" %}
+cyan: "#{% {{colo}.cyan} %}"
 ```
-```yaml
+```
+# varsets/root
+colo: limestone
+```
+```
 # varsets/limestone
 cyan: 87c0b0
 ```
-```yaml
-# config.yml  
+Result:
+```
+# ~/.config/testrc
 cyan: "#87c0b0"
 ```
 
