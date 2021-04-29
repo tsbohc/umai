@@ -12,11 +12,14 @@ umai will search a directory tree for .umai templates, render each of them to a 
 
 #### templating
 - expressions
-  - have implicit context, no need to specify where to pull values from
+  - have implicit contexts, no need to specify where to pull values from
+  - contexts range from varsets to environmental variables
   - support any level of nesting
 - statements
   - sandboxed evaluation of any arbitrary lua code
   - extendable sandbox
+- varsets
+  - xdefaults-like datasets that provide context to templates
 - metadata
   - templates determine their own metadata during evaluation
   - used for additional instructions, such as post install hooks
