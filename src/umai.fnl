@@ -1,54 +1,59 @@
-(require-macros :macros)
-
-(local core  (require :core))
 (local fs (require :fs))
-(local expose (require :expose))
+(local core (require :core))
 (local parse (require :parse))
 (local render (require :render))
-(local install (require :install))
-(local petals (require :petals))
-
-;(tset package :path (.. package.path ";/home/sean/.local/share/nvim/site/pack/packer/start/lush.nvim/lua/?.lua"))
-;(tset package :path (.. package.path ";/home/sean/.local/share/nvim/site/pack/packer/start/kohi/lua/lush_theme/?.lua"))
-
+(local fetch (require :fetch))
 
 ; TODO:
 ; custom file ext? like .umai. what about ft?
-; add getenv to sandbox
-
-; get rid of expose, again?
-; use root varset and env variables instead of expose
-; definitely env for .garden/etc and varsets
-
-; maybe make it so that .garden/etc/umai/varsets
 ; and .garden/etc/umai/root <- "exposed" varset
-
-; clean up get, maybe rename to fetch to prevent name clash with get, get-in, get-dp
-; clean up lexis
-; clean up macros, remove global weirdness?
-; remove petals? <- combine varset and petals
-
-; clean up and refactor in general
 
 ; write tests
 
 ; FIXME: LUSH
 
-(expose {:ENV "/home/sean/.garden/etc"})
+(fn pretty [...]
+  (print (core.inspect ...)))
 
-(local se {})
 
-(set se.ENV "/home/sean/.garden/etc")
-(set se.colo "kohi")
+(local cache (.. (os.getenv "HOME") "/.config/umai/"))
+(when (not (fs.exists? cache))
+    (fs.mkdir cache))
 
-(expose se)
 
-(fn make [path]
+(fn templates []
+  (with-open
+    [file (assert (io.popen (.. "find " (fetch.from-env "ENV") " -name '*.umai' -type f") "r"))]
+    (let [xt []]
+      (each [line (file:lines)]
+        (table.insert xt line))
+      xt)))
+
+
+(fn make! [rendered]
+  (if (core.has? rendered.meta :target)
+    (let [content rendered.data
+          path (.. cache (fs.basename rendered.meta.target))]
+      ; TODO: create path to symlinked folder if doesn't exist?
+      (fs.write path content)
+      (fs.link path rendered.meta.target))
+    (error "cannot install, no target is specified")))
+
+
+(fn install [path]
   (print (.. "installing: " path))
-  (->> path
+  (->> (fs.realpath path)
        (fs.read)
        (parse)
        (render)
-       (install)))
+       (make!)))
 
-(core.map make (petals))
+
+(fn install-all []
+  (core.map install (templates)))
+
+
+(if (not= nil (. arg 1))
+  (each [_ a (ipairs arg)]
+    (install a))
+  (install-all))

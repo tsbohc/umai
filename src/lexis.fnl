@@ -1,44 +1,17 @@
-; manages blossom's grammar
-
-; TODO: implementation still naive
-; include _'s and -'s in names
-; think about usage first, then rewrite
-
 (local g
-  {:pattern-l "{%-" :pattern-r "-%}" ; rename: env?
-   :token-l   "{"   :token-r     "}"})
+  {:t-l "{"   :t-r   "}"
+   :s-l "{% " :s-r " %}"})
 
-; handle escaped?
-;(local m
-;  {:token {:l "{%-" :r "-%}"}})
+(local lexis
+  {:statement     (.. g.s-l g.s-r)
+   :expression    (.. g.t-l g.t-r)
+   :statement-re  (.. "(" (g.s-l:escape) ".-" (g.s-r:escape) ")")
+   :expression-re (.. "(" (g.t-l:escape) "[%w._%-{}]+" (g.t-r:escape) ")")
+   :token-re      (.. (g.t-l:escape) "([%w._%-]+)" (g.t-r:escape))})
 
-(local lexis {})
-
-(fn lexis.pattern-esc [s]
-  (.. (g.pattern-l:escape) s (g.pattern-r:escape)))
-
-(fn lexis.pattern-lit [s]
-  (.. (g.pattern-l) s (g.pattern-r)))
 
 (fn lexis.token-esc [s]
-  (.. (g.token-l:escape) s (g.token-r:escape)))
+  (.. (g.t-l:escape) s (g.t-r:escape)))
 
-(fn lexis.token-lit [s]
-  (.. (g.token-l) s (g.token-r)))
-
-(tset lexis :pattern-re
-  (lexis.pattern-esc "(.-)"))
-
-(tset lexis :token-re
-  (lexis.token-esc "([%w.]+)"))
-
-(tset lexis :token-re-new "({[%w.{}]+})")
-(tset lexis :env "({%%..-.%%})")
-
-(tset lexis :statement "{%  %}")
-(tset lexis :expression "{}")
-
-(tset lexis :statement-re "({%% .- %%})")
-(tset lexis :expression-re "({[%w._%-{}]+})")
 
 lexis

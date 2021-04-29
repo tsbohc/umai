@@ -1,4 +1,4 @@
-(local get (require :get))
+(local fetch (require :fetch))
 (local sandbox {})
 
 
@@ -9,7 +9,7 @@
 
 (fn sandbox.get [s]
   "fetch value"
-  (get s))
+  (fetch s))
 
 
 (fn sandbox.getenv [s]

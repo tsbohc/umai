@@ -40,4 +40,11 @@
   (path:match ".*/(.-)$"))
 
 
+(fn fs.realpath [path]
+  (with-open
+    [file (assert (io.popen (.. "realpath " path)))]
+    (let [out (file:read "*a")]
+      (pick-values 1 (out:gsub "\n" "")))))
+
+
 fs

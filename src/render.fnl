@@ -1,5 +1,5 @@
 (local core (require :core))
-(local get (require :get))
+(local fetch (require :fetch))
 (local lexis (require :lexis))
 (local sandbox (require :sandbox))
 (local render {})
@@ -13,7 +13,7 @@
 (fn inject-single [s]
   "render a leaf-most {token} in string 's'"
   (let [key (s:match lexis.token-re)
-        val (get key)]
+        val (fetch key)]
     (pick-values 1 (s:gsub (lexis.token-esc key) val))))
 
 
