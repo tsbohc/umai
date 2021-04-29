@@ -26,21 +26,24 @@ umai will search a directory tree for .umai templates, render each of them to a 
 
 ## example
 
+```bash
+# bashrc
+uex() { export "UMAI_$1"="$2" ; }
+uex ENV "$HOME/.garden/"
+uex VAR "$HOME/.garden/varsets"
+uex colo "kohi"
 ```
-# .files/testrc.umai
+```yaml
+# ~/.garden/test.d/testrc.umai
 {% target "~/.config/testrc" %}
 cyan: "#{% {{colo}.cyan} %}"
 ```
-```
-# varsets/root
-colo: limestone
-```
-```
-# varsets/limestone
+```bash
+# ~/.garden/varsets/limestone
 cyan: 87c0b0
 ```
 Result:
-```
+```yaml
 # ~/.config/testrc
 cyan: "#87c0b0"
 ```
