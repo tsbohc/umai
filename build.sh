@@ -3,11 +3,11 @@
 
 # pack everything into a single binary
 cd src
-fennel --compile --require-as-include blossom.fnl > ../blossom
+fennel --compile --require-as-include umai.fnl > ../umai
 
 # add lua env header
 echo "#!/usr/bin/env lua
-$(cat ../blossom)" > ../blossom
+$(cat ../umai)" > ../umai
 
 # make file executable
-chmod +x ../blossom
+chmod +x ../umai
