@@ -1,9 +1,9 @@
 # umai
 A .files management tool and a templating engine with a twist: there's no configuration file.
 
-`umai` takes a template, renders it to a separate folder, and symlinks the result to the target location specified within the template itself.
+umai takes a template, renders it to a separate folder, and symlinks the result to the target location specified within the template itself.
 
-`umai` is meant to be scripted and extended.
+umai is meant to be scripted and extended.
 
 ## features
 
@@ -56,7 +56,7 @@ umai-export() {
 }
 ```
 
-Use `umai` interactively with `fzf`:
+Use umai interactively with fzf:
 ```bash
 umai-interactive() { 
   umai "$(find $dotfiles -type f -name '*.umai' | fzf)"
