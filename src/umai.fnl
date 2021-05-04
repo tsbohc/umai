@@ -16,44 +16,25 @@
   (print (core.inspect ...)))
 
 
-(local cache (.. (os.getenv "HOME") "/.config/umai/"))
-(when (not (fs.exists? cache))
-    (fs.mkdir cache))
-
-
-(fn templates []
-  (with-open
-    [file (assert (io.popen (.. "find " (fetch.from-env "ENV") " -name '*.umai' -type f") "r"))]
-    (let [xt []]
-      (each [line (file:lines)]
-        (table.insert xt line))
-      xt)))
-
-
 (fn make! [rendered]
   (if (core.has? rendered.meta :target)
     (let [content rendered.data
-          path (.. cache (fs.basename rendered.meta.target))]
-      ; TODO: create path to symlinked folder if doesn't exist?
-      (fs.write path content)
-      (fs.link path rendered.meta.target))
+          target rendered.meta.target
+          cache (.. (os.getenv "HOME") "/.config/umai/" (fs.basename target))]
+      (fs.mkdir (fs.dirname cache))
+      (fs.write cache content)
+      (fs.link cache target))
     (error "cannot install, no target is specified")))
 
 
-(fn install [path]
-  (print (.. "installing: " path))
-  (->> (fs.realpath path)
-       (fs.read)
+(fn install! [path]
+  (print (.. ":: " path))
+  (->> (fs.read path)
        (parse)
        (render)
        (make!)))
 
 
-(fn install-all []
-  (core.map install (templates)))
-
-
 (if (not= nil (. arg 1))
   (each [_ a (ipairs arg)]
-    (install a))
-  (install-all))
+    (install! a)))

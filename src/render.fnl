@@ -4,6 +4,7 @@
 (local sandbox (require :sandbox))
 (local render {})
 
+; TODO: warn instead of erroring when {}'s couldn't be rendered
 
 (fn inject? [s]
   "check if string 's' contains a {token}"

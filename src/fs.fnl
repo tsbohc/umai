@@ -37,7 +37,11 @@
 
 
 (fn fs.basename [path]
-  (path:match ".*/(.-)$"))
+  (path:match ".*[/\\](.-)$"))
+
+
+(fn fs.dirname [path]
+  (path:match "(.*[/\\])"))
 
 
 (fn fs.realpath [path]

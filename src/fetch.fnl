@@ -9,7 +9,7 @@
 
 (fn _varset-list []
   "retrieve varsets list"
-  (let [path (fetch.from-env "VAR")]
+  (let [path (fetch.from-env "VARSETS_DIR")]
     (with-open
       [file (assert (io.popen (.. "find " path " -type f") "r"))]
       (let [xs []]
@@ -20,7 +20,7 @@
 
 (fn _varset-load [name]
   "return a varset table by [name]"
-  (let [path (fetch.from-env "VAR")]
+  (let [path (fetch.from-env "VARSETS_DIR")]
     (with-open
       [file (assert (io.open (.. path "/" name) "r"))]
       (let [comment-re "%s*!"
