@@ -2,57 +2,48 @@
 (local fetch (require :fetch))
 (local lexis (require :lexis))
 (local sandbox (require :sandbox))
+
 (local render {})
 
-; inject
-
-(fn inject? [s]
-  "check if string 's' contains a {token}"
-  (if (s:find lexis.token-re) true false))
-
 (fn inject-single [s]
-  "render a leaf-most {token} in string 's'"
-  (let [key (s:match lexis.token-re)
-        val (fetch key)]
-    (pick-values 1 (s:gsub (lexis.token-esc key) val))))
+  "render a leaf-most {expression} in string 's'"
+  (let [key (s:match lexis.expression-re)
+        val (fetch key)
+        l (lexis.e-l:escape) r (lexis.e-r:escape)]
+    (s:gsub (.. l key r) val)))
 
-(fn render.inject [s]
-  "recursively render {tokens} in string 's'"
-  ; TODO: check for max recursion depth?
-  (if (inject? s)
-    (render.inject (inject-single s))
+(fn inject [s]
+  "recursively render {expresson}s in string 's'"
+  (if (s:find lexis.expression-re)
+    (inject (inject-single s))
     s))
 
-; render
-
-(fn render.evaluate [s]
-  "evaluate arbitrary lua code in a sandbox"
+(fn evaluate [s]
+  "evaluate arbitrary lua string 's' in a sandbox"
   (let [f (load (if (not (s:find "return ")) (.. "return " s) s))]
     (core.setfenv f sandbox)
     (f)))
 
-(fn render-single [s]
-  "render single fragment"
-  ; TODO: injection should work on any expression, period.
-  (let [hs (.. (s:sub 1 3) (s:sub -3))
-        cs (s:sub 4 -4)]
-    (match hs
-      lexis.statement
-      (if (cs:find lexis.expression-re)
-        (render.inject cs)
-        (render.evaluate cs))
-      _ s)
-    ))
+(fn render.single [s]
+  "render a single fragment in string 's'"
+  (if (s:find lexis.statement-re)
+    (let [cs (s:sub (+ (lexis.s-l:len) 1) (* -1 (+ (lexis.s-r:len) 1)))]
+      (-> cs
+          (inject)
+          (evaluate)))
+    s))
 
 (fn render.render [xs]
-  "render fragment into data and meta"
+  "render a sequence of fragments 'xs' into data and meta"
   (let [data []
         meta {}]
     (each [_ s (ipairs xs)]
-      (let [(d m) (render-single s)]
+      (let [(d m) (render.single s)]
         (table.insert data d)
         (core.merge! meta m)))
     {:data (table.concat data) :meta meta}))
 
-(setmetatable render {:__call (fn [_ ...] (render.render ...))})
+(setmetatable
+  render {:__call (fn [_ ...] (render.render ...))})
+
 render

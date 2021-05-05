@@ -4,6 +4,7 @@
 (local parse {})
 
 (fn parse.parse [s]
+  ; TODO: naive implementation?
   (var s s)
   (var done? false)
   (let [xs []]
@@ -19,6 +20,7 @@
       (table.insert xs s))
     xs))
 
-(setmetatable parse {:__call (fn [_ ...] (parse.parse ...))})
+(setmetatable
+  parse {:__call (fn [_ ...] (parse.parse ...))})
 
 parse

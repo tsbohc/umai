@@ -35,3 +35,18 @@
 (if (not= nil (. arg 1))
   (each [_ a (ipairs arg)]
     (install! a)))
+
+
+;(macro ?- [e r]
+;  `(do
+;     (print "")
+;     (print (.. "= " ,e " " ,(tostring r)))
+;     (if (= ,e ,r)
+;       (print "pass")
+;       (print (.. "expected '" (core.inspect ,e)
+;                  "', received '" (core.inspect ,r) "'")))))
+;
+;
+;(?- 20 (render.single "{% 3 * 7 - 1 %}"))
+;(?- "kohi" (render.single "{% {colo} %}"))
+;(?- "colo: kohi" (render.single "{% 'colo: ' .. '{colo}' %}"))
