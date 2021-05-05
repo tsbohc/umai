@@ -1,35 +1,10 @@
-; forward declare with M?
-
-(do
-  (fn escape [s]
+(tset
+  (getmetatable "")
+  :__index :escape
+  (fn [s]
     "escape string for regular expressions"
-    (pick-values
-      1 (s:gsub
-          "[%(%)%.%%%+%-%*%?%[%]%^%$]"
-          (fn [c] (.. "%" c)))))
-
-  ; TODO: needs to accept multiple patterns
-  (fn fragmentate [s pattern xs]
-    "split string into raw and tokens"
-    ; FIXME: bad implementation
-    ; rewrite with while
-    (let [xs (or xs [])
-          (from to token) (s:find pattern)]
-      (if token
-        (let [raw (s:sub 1 (- from 1))
-              s (s:sub (+ to 1))]
-          (table.insert xs raw)
-          (table.insert xs token)
-          (fragmentate s pattern xs))
-        (do
-          (when (not= s "")
-            (table.insert xs s))
-          xs))))
-
-  (let [mt (getmetatable "")]
-    (tset mt :__index :escape escape)
-    (tset mt :__index :fragmentate fragmentate)))
-
+    (s:gsub "[%(%)%.%%%+%-%*%?%[%]%^%$]"
+            (fn [c] (.. "%" c)))))
 
 (local core {})
 
@@ -48,7 +23,6 @@
       (lua "return false")))
   true)
 
-
 (fn core.has? [xt y]
   "check if table contains a value or a (k, v) pair"
   (if (core.seq? xt)
@@ -59,14 +33,11 @@
       (lua "return true")))
   false)
 
-
 (fn core.even? [n]
   (= (% n 2) 0))
 
-
 (fn core.odd? [n]
   (not (core.even? n)))
-
 
 (fn core.count [xs]
   "count elements in seq or characters in string"
@@ -80,7 +51,6 @@
     (not xs) 0
     (length xs)))
 
-
 (fn core.run! [f xs]
   "execute the function (for side effects) for every xs."
   (when xs
@@ -88,7 +58,6 @@
       (when (> nxs 0)
         (for [i 1 nxs]
           (f (. xs i)))))))
-
 
 (fn core.map [f xs]
   "map xs to a new seq by calling (f x) on each item."
@@ -104,7 +73,6 @@
       xs)
     result))
 
-
 (fn core.reduce [f init xs]
   "reduce xs into a result by passing each subsequent value into the fn with
   the previous value as the first arg. Starting with init."
@@ -114,7 +82,6 @@
       (set result (f result x)))
     xs)
   result)
-
 
 (fn core.merge! [base ...]
   (core.reduce
@@ -135,7 +102,6 @@
               (. xt k))]
     (if (core.nil? res) d res)))
 
-
 (fn core.get-in [xt ks d]
   "retrieve value from 'xt' by 'ks' [k1 k2 ...], fall back to 'd'"
   (let [res (core.reduce
@@ -145,14 +111,12 @@
               xt ks)]
     (if (core.nil? res) d res)))
 
-
 (fn core.get-dp [xt s d]
   "retrieve value from 'xt' by 's' k1.k2..., fall back to 'd'"
   (let [ks []]
     (each [w (s:gmatch "[%w_]+")]
       (table.insert ks w))
     (core.get-in xt ks d)))
-
 
 (set core.inspect (require :lib.inspect))
 (set core.memoize (require :lib.memoize))

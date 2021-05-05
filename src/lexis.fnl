@@ -9,9 +9,7 @@
    :expression-re (.. "(" (g.t-l:escape) "[%w._%-{}]+" (g.t-r:escape) ")")
    :token-re      (.. (g.t-l:escape) "([%w._%-]+)" (g.t-r:escape))})
 
-
 (fn lexis.token-esc [s]
   (.. (g.t-l:escape) s (g.t-r:escape)))
-
 
 lexis

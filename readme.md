@@ -27,7 +27,6 @@ umai is meant to be scripted and extended.
   - can be used for additional instructions, such as post install hooks
 
 ## examples
-### general
 ```bash
 # bashrc
 export UMAI_VARSETS_DIR="$HOME/.garden/varsets"

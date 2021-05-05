@@ -1,5 +1,6 @@
 (local core (require :core))
 (local lexis (require :lexis))
+
 (local parse {})
 
 (fn parse.parse [s]
@@ -17,7 +18,6 @@
     (when (> (core.count s) 0)
       (table.insert xs s))
     xs))
-
 
 (setmetatable parse {:__call (fn [_ ...] (parse.parse ...))})
 

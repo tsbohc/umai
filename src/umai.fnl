@@ -15,7 +15,6 @@
 (fn pretty [...]
   (print (core.inspect ...)))
 
-
 (fn make! [rendered]
   (if (core.has? rendered.meta :target)
     (let [content rendered.data
@@ -26,14 +25,12 @@
       (fs.link cache target))
     (error "cannot install, no target is specified")))
 
-
 (fn install! [path]
   (print (.. ":: " path))
   (->> (fs.read path)
        (parse)
        (render)
        (make!)))
-
 
 (if (not= nil (. arg 1))
   (each [_ a (ipairs arg)]
