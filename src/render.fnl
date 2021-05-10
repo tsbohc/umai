@@ -19,18 +19,22 @@
     s))
 
 (fn evaluate [s]
-  "evaluate arbitrary lua string 's' in a sandbox"
-  (let [f (load (if (not (s:find "return ")) (.. "return " s) s))]
-    (core.setfenv f sandbox)
-    (f)))
+  "evaluate arbitrary lua strin 's' in a sandbox"
+  (if (= "Lua 5.1" _VERSION)
+    (let [f (loadstring (if (not (s:find "return ")) (.. "return " s) s))]
+      (setfenv f sandbox)
+      (f))
+    (let [f (load (if (not (s:find "return ")) (.. "return " s) s))]
+      (core.setfenv f sandbox)
+      (f))))
 
 (fn render.single [s]
   "render a single fragment in string 's'"
   (if (s:find lexis.statement-re)
     (let [cs (s:sub (+ (lexis.s-l:len) 1) (* -1 (+ (lexis.s-r:len) 1)))]
-      (-> cs
-          (inject)
-          (evaluate)))
+      (if (s:find lexis.expression-re)
+        (inject cs)
+        (evaluate cs)))
     s))
 
 (fn render.render [xs]
@@ -39,6 +43,8 @@
         meta {}]
     (each [_ s (ipairs xs)]
       (let [(d m) (render.single s)]
+        ;(print s)
+        ;(print d m)
         (table.insert data d)
         (core.merge! meta m)))
     {:data (table.concat data) :meta meta}))

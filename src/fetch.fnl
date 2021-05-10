@@ -1,5 +1,6 @@
 (local core (require :core))
 (local fs (require :fs))
+(local expose (require :expose))
 
 (local fetch {})
 
@@ -36,7 +37,10 @@
 (local varset-load
   (core.memoize _varset-load))
 
-(fn fetch.from-var [s]
+(fn fetch.from-expose [s]
+  (core.get-dp expose.state s))
+
+(fn fetch.from-varset [s]
   (let [name (s:match "(%w+)%.")
         path (s:match "%.([%w.]+)")]
     (when (not= nil name)
@@ -45,7 +49,7 @@
         (error (.. "varset '" name "' doesn't exist"))))))
 
 (fn fetch.fetch [s]
-  (let [v (or (fetch.from-env s) (fetch.from-var s))]
+  (let [v (or (fetch.from-expose s) (fetch.from-env s) (fetch.from-varset s))]
     (if (core.nil? v)
       (error (.. "value of token '" s "' could not be found."))
       v)))

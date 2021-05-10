@@ -35,7 +35,7 @@
 
 (fn fs.realpath [path]
   (with-open
-    [file (assert (io.popen (.. "realpath " path)))]
+    [file (assert (io.popen (.. "realpath " path) "r"))]
     (let [out (file:read "*a")]
       (pick-values 1 (out:gsub "\n" "")))))
 
