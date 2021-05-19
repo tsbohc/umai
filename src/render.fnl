@@ -6,7 +6,7 @@
 (local render {})
 
 (fn inject-single [s]
-  "render a leaf-most {expression} in string 's'"
+  "render the leaf-most {expression} in string 's'"
   (let [key (s:match lexis.expression-re)
         val (fetch key)
         l (lexis.e-l:escape) r (lexis.e-r:escape)]
@@ -19,7 +19,7 @@
     s))
 
 (fn evaluate [s]
-  "evaluate arbitrary lua strin 's' in a sandbox"
+  "evaluate arbitrary lua string 's' in a sandbox"
   (if (= "Lua 5.1" _VERSION)
     (let [f (loadstring (if (not (s:find "return ")) (.. "return " s) s))]
       (setfenv f sandbox)

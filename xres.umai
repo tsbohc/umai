@@ -18,6 +18,7 @@ Xft.rgba: rgb
 Xft.hintstyle: hintslight
 Xft.lcdfilter: lcddefault
 
+!*.font: JetBrains Mono:style=medium:size=12
 *.font: Fira Code:style=medium:size=12
 
 *.foreground: #{% {{colo}.foreground} %}

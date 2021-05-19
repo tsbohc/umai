@@ -12,53 +12,35 @@ umai is meant to be scripted and extended.
 - binary is a single lua script, no dependencies
 - nearly 0-config
 
-### templating
-- expressions
-  - have implicit contexts, no need to specify where to pull values from
-  - contexts range from varsets to environmental variables
-  - support any level of nesting
-- statements
-  - sandboxed evaluation of any arbitrary lua code
-  - extendable sandbox
-- varsets
-  - xdefaults-like datasets that provide context to templates
-- metadata
-  - templates determine their own metadata during evaluation
-  - can be used for additional instructions, such as post install hooks
-
 ## examples
 ```bash
 # bashrc
-export UMAI_VARSETS_DIR="$HOME/.garden/varsets"
-export UMAI_colo="limestone"
+umai-all() {
+  umai --varsets "~/.garden/etc/umai.d/" "$@" - \
+       "$(find ~/.garden/etc -type f -name "*.umai")"
+}
 ```
 ```bash
 # ~/.garden/test.d/testrc.umai
-{% softlink "~/.config/testrc" %}
+{% softlink "~/.config/testrc.yml" %}
 cyan: "#{% {{colo}.cyan} %}"
 ```
 ```bash
-# ~/.garden/varsets/limestone
+# ~/.garden/etc/umai.d/limestone
 cyan: 87c0b0
 ```
-After running `umai testrc.umai`:
+After running `umai-all -colo limestone`:
 ```yaml
-# ~/.config/testrc
+# ~/.config/testrc.yml
 cyan: "#87c0b0"
 ```
 
 ## scripting
-Make exporting variables easier:
-```bash
-umai-export() {
-  export "UMAI_$1"="$2"
-}
-```
-
 Use umai interactively with fzf:
 ```bash
-umai-interactive() { 
-  umai "$(find $dotfiles -type f -name '*.umai' | fzf)"
+umai-fzf() {
+  umai --varsets "~/.garden/etc/umai.d" "$@" - \
+      "$(find ~/.garden/etc -type f -name '*.umai' | fzf)"
 }
 ```
 
