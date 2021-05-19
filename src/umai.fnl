@@ -6,6 +6,7 @@
 
 (local core (require :core))
 (local expose (require :expose))
+(local fetch (require :fetch))
 
 ; FIXME: LUSH
 ; i think the best we can do is to launch a subshell, run lua, retrieve values, and write them to a varset
@@ -58,10 +59,12 @@
 (expose.set :limestone (get-colors-from-lush))
 
 (args.parse [...])
-(pretty args)
+;(pretty args)
 
 (each [_ v (ipairs args.files)]
   (install! v))
+
+
 
 ; ---
 

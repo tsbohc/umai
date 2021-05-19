@@ -23,7 +23,6 @@ package.preload["make"] = package.preload["make"] or function(...)
   make.make = function(rendered)
     local data = rendered.data
     local meta = rendered.meta
-    pretty(meta)
     for _, m in ipairs(meta) do
       local f = hook[m[1]]
       local v = m[2]
@@ -62,36 +61,6 @@ package.preload["sandbox"] = package.preload["sandbox"] or function(...)
   setmetatable(sandbox, {__index = _0_})
   return sandbox
 end
-package.preload["args"] = package.preload["args"] or function(...)
-  local args = {files = {}, vars = {}, varsets = ""}
-  local usage = "umai - .files management and templating\n\nusage:\n  umai [--varsets <path>] [-key val ...] - <template> ..."
-  args.parse = function(xs)
-    if (("--help" == xs[1]) or ("-h" == xs[1])) then
-      print(usage)
-      os.exit()
-    end
-    local key = ""
-    local files_3f = false
-    for _, val in ipairs(xs) do
-      if not files_3f then
-        if (key == "--varsets") then
-          args["varsets"] = val
-        elseif key:find("%-%S+") then
-          args.vars[key:sub(2)] = val
-        elseif (key == "-") then
-          files_3f = true
-          table.insert(args.files, val)
-        end
-      else
-        table.insert(args.files, val)
-      end
-      key = val
-    end
-    args["parse"] = nil
-    return nil
-  end
-  return args
-end
 package.preload["expose"] = package.preload["expose"] or function(...)
   local expose = {}
   expose["state"] = {}
@@ -111,7 +80,7 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
     return args.vars[s]
   end
   local function _varset_list()
-    local path = fetch["from-arg"]("varsets")
+    local path = args.varsets
     if path then
       local file = assert(io.popen(("find " .. path .. " -type f"), "r"))
       local function close_handlers_0_(ok_0_, ...)
@@ -138,9 +107,15 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
   end
   local varset_list = core.memoize(_varset_list)
   local function _varset_load(name)
-    local path = fetch["from-arg"]("varsets")
-    if path then
-      local file = assert(io.open((path .. "/" .. name), "r"))
+    local path = args.varsets
+    local path0 = nil
+    if ("/" == path:sub(-1)) then
+      path0 = path:sub(1, -1)
+    else
+      path0 = path
+    end
+    if path0 then
+      local file = assert(io.open((path0 .. "/" .. name), "r"))
       local function close_handlers_0_(ok_0_, ...)
         file:close()
         if ok_0_ then
@@ -149,7 +124,7 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
           return error(..., 0)
         end
       end
-      local function _0_()
+      local function _1_()
         local comment_re = "%s*!"
         local keyval_re = "(%w+):%s*(%w+)"
         local xt = {}
@@ -161,7 +136,7 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
         end
         return xt
       end
-      return close_handlers_0_(xpcall(_0_, (package.loaded.fennel or debug).traceback))
+      return close_handlers_0_(xpcall(_1_, (package.loaded.fennel or debug).traceback))
     end
   end
   local varset_load = core.memoize(_varset_load)
@@ -172,11 +147,7 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
     local name = s:match("(%w+)%.")
     local path = s:match("%.([%w.]+)")
     if (nil ~= name) then
-      if core["has?"](varset_list(), name) then
-        return core["get-dp"](varset_load(name), path)
-      else
-        return error(("varset '" .. name .. "' doesn't exist"))
-      end
+      return core["get-dp"](varset_load(name), path)
     end
   end
   fetch.fetch = function(s)
@@ -273,36 +244,6 @@ package.preload["lexis"] = package.preload["lexis"] or function(...)
   lexis["statement-re"] = ("(" .. (lexis["s-l"]):escape() .. ".-" .. (lexis["s-r"]):escape() .. ")")
   lexis["expression-re"] = ((lexis["e-l"]):escape() .. "([%w._%-]+)" .. (lexis["e-r"]):escape())
   return lexis
-end
-package.preload["parse"] = package.preload["parse"] or function(...)
-  local core = require("core")
-  local lexis = require("lexis")
-  local parse = {}
-  parse.parse = function(s)
-    local s0 = s
-    local done_3f = false
-    local xs = {}
-    while not done_3f do
-      local x, y = s0:find(lexis["statement-re"])
-      if (nil ~= x) then
-        table.insert(xs, s0:sub(1, (x - 1)))
-        table.insert(xs, s0:sub(x, y))
-        s0 = s0:sub((y + 1))
-      end
-      if (nil == x) then
-        done_3f = true
-      end
-    end
-    if (core.count(s0) > 0) then
-      table.insert(xs, s0)
-    end
-    return xs
-  end
-  local function _0_(_, ...)
-    return parse.parse(...)
-  end
-  setmetatable(parse, {__call = _0_})
-  return parse
 end
 package.preload["lib.setfenv"] = package.preload["lib.setfenv"] or function(...)
   local function setfenv(fn, env)
@@ -899,7 +840,36 @@ package.preload["core"] = package.preload["core"] or function(...)
   core.setfenv = require("lib.setfenv")
   return core
 end
-local fs = nil
+package.preload["parse"] = package.preload["parse"] or function(...)
+  local core = require("core")
+  local lexis = require("lexis")
+  local parse = {}
+  parse.parse = function(s)
+    local s0 = s
+    local done_3f = false
+    local xs = {}
+    while not done_3f do
+      local x, y = s0:find(lexis["statement-re"])
+      if (nil ~= x) then
+        table.insert(xs, s0:sub(1, (x - 1)))
+        table.insert(xs, s0:sub(x, y))
+        s0 = s0:sub((y + 1))
+      end
+      if (nil == x) then
+        done_3f = true
+      end
+    end
+    if (core.count(s0) > 0) then
+      table.insert(xs, s0)
+    end
+    return xs
+  end
+  local function _0_(_, ...)
+    return parse.parse(...)
+  end
+  setmetatable(parse, {__call = _0_})
+  return parse
+end
 package.preload["fs"] = package.preload["fs"] or function(...)
   local fs = {}
   fs.read = function(path)
@@ -976,14 +946,45 @@ package.preload["fs"] = package.preload["fs"] or function(...)
   end
   return fs
 end
-fs = require("fs")
-local core = require("core")
+local args = nil
+package.preload["args"] = package.preload["args"] or function(...)
+  local args = {files = {}, vars = {}, varsets = ""}
+  local usage = "umai - .files management and templating\n\nusage:\n  umai [--varsets <path>] [-key val ...] - <template> ..."
+  args.parse = function(xs)
+    if (("--help" == xs[1]) or ("-h" == xs[1])) then
+      print(usage)
+      os.exit()
+    end
+    local key = ""
+    local files_3f = false
+    for _, val in ipairs(xs) do
+      if not files_3f then
+        if (key == "--varsets") then
+          args["varsets"] = val
+        elseif key:find("%-%S+") then
+          args.vars[key:sub(2)] = val
+        elseif (key == "-") then
+          files_3f = true
+          table.insert(args.files, val)
+        end
+      else
+        table.insert(args.files, val)
+      end
+      key = val
+    end
+    args["parse"] = nil
+    return nil
+  end
+  return args
+end
+args = require("args")
+local fs = require("fs")
 local parse = require("parse")
 local render = require("render")
 local make = require("make")
-local fetch = require("fetch")
+local core = require("core")
 local expose = require("expose")
-local args = require("args")
+local fetch = require("fetch")
 local function pretty(...)
   return print(core.inspect(...))
 end
@@ -1047,7 +1048,6 @@ local function get_colors_from_lush()
 end
 expose.set("limestone", get_colors_from_lush())
 args.parse({...})
-pretty(args)
 for _, v in ipairs(args.files) do
   install_21(v)
 end

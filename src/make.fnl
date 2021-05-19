@@ -31,7 +31,7 @@
 (fn make.make [rendered]
   (let [data rendered.data
         meta rendered.meta]
-    (pretty meta)
+    ;(pretty meta)
     (each [_ m (ipairs meta)]
       (let [f (. hook (. m 1))
             v (. m 2)]

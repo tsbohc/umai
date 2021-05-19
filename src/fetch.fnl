@@ -13,7 +13,7 @@
 
 (fn _varset-list []
   "retrieve varsets list"
-  (let [path (fetch.from-arg "varsets")]
+  (let [path args.varsets]
     (when path
       (with-open
         [file (assert (io.popen (.. "find " path " -type f") "r"))]
@@ -27,7 +27,8 @@
 
 (fn _varset-load [name]
   "return a varset table by name"
-  (let [path (fetch.from-arg "varsets")]
+  (let [path args.varsets
+        path (if (= "/" (path:sub -1)) (path:sub 1 -1) path)]
     (when path
       (with-open
         [file (assert (io.open (.. path "/" name) "r"))]
@@ -50,9 +51,7 @@
   (let [name (s:match "(%w+)%.")
         path (s:match "%.([%w.]+)")]
     (when (not= nil name)
-      (if (core.has? (varset-list) name)
-        (core.get-dp (varset-load name) path)
-        (error (.. "varset '" name "' doesn't exist"))))))
+      (core.get-dp (varset-load name) path))))
 
 (fn fetch.fetch [s]
   (let [v (or (fetch.from-arg s) (fetch.from-expose s) (fetch.from-varset s))]
