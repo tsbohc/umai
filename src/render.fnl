@@ -43,10 +43,8 @@
         meta {}]
     (each [_ s (ipairs xs)]
       (let [(d m) (render.single s)]
-        ;(print s)
-        ;(print d m)
         (table.insert data d)
-        (core.merge! meta m)))
+        (table.insert meta m)))
     {:data (table.concat data) :meta meta}))
 
 (setmetatable

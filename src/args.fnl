@@ -3,9 +3,16 @@
    :vars {}
    :files []})
 
-; NB: we only parse args once, then args.parse is removed
+(local usage "umai - .files management and templating
+
+usage:
+  umai [--varsets <path>] [-key val ...] - <template> ...")
 
 (fn args.parse [xs]
+  (when
+    (or (= "--help" (. xs 1)) (= "-h" (. xs 1)))
+    (print usage)
+    (os.exit))
   (var key "")
   (var files? false)
   (each [_ val (ipairs xs)]

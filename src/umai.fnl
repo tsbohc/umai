@@ -1,20 +1,11 @@
+(local args (require :args))
 (local fs (require :fs))
-(local core (require :core))
 (local parse (require :parse))
 (local render (require :render))
-(local fetch (require :fetch))
+(local make (require :make))
+
+(local core (require :core))
 (local expose (require :expose))
-(local args (require :args))
-
-; TODO:
-; remove dependensy on env variables, use aliases like nnn
-; e.g 'umai --colo limestone'
-
-; add setmeta to sandbox and wrap that
-; parse meta? meta values should prolly be strings that will call the function with that name
-
-; custom file ext? like .umai. what about ft?
-; and .garden/etc/umai/root <- "exposed" varset
 
 ; FIXME: LUSH
 ; i think the best we can do is to launch a subshell, run lua, retrieve values, and write them to a varset
@@ -22,27 +13,11 @@
 (fn pretty [...]
   (print (core.inspect ...)))
 
-(fn make! [rendered]
-  (if (core.has? rendered.meta :target)
-    (let [content rendered.data
-          target rendered.meta.target
-          cache (.. (os.getenv "HOME") "/.config/umai/" (fs.basename target))]
-      (fs.mkdir (fs.dirname cache))
-      (fs.write cache content)
-      (fs.link cache target))
-    (error "cannot install, no target is specified")))
-
 (fn install! [path]
-  (print (.. ":: " path))
   (->> (fs.read path)
        (parse)
        (render)
-       (make!)))
-
-
-
-
-
+       (make)))
 
 (fn nvim-rtp []
   (with-open
@@ -82,14 +57,13 @@
 
 (expose.set :limestone (get-colors-from-lush))
 
-
 (args.parse [...])
 (pretty args)
 
-;(each [_ v (ipairs args.files)]
-;  (install! v))
+(each [_ v (ipairs args.files)]
+  (install! v))
 
-
+; ---
 
 ;(if (not= nil (. arg 1))
 ;  (each [_ a (ipairs arg)]

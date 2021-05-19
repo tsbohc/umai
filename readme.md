@@ -9,13 +9,17 @@ umai is meant to be scripted and extended.
 
 ### minimalist
 - written in fennel, a lisp that compiles to lua
-- binary is a single lua script, no dependencies
+- binary is a standalone lua script
 - nearly 0-config
+
+## usage
+```
+```
 
 ## examples
 ```bash
 # bashrc
-umai-all() {
+umai!() {
   umai --varsets "~/.garden/etc/umai.d/" "$@" - \
        "$(find ~/.garden/etc -type f -name "*.umai")"
 }
@@ -29,7 +33,7 @@ cyan: "#{% {{colo}.cyan} %}"
 # ~/.garden/etc/umai.d/limestone
 cyan: 87c0b0
 ```
-After running `umai-all -colo limestone`:
+After running `umai! -colo limestone`:
 ```yaml
 # ~/.config/testrc.yml
 cyan: "#87c0b0"

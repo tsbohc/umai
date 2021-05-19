@@ -1,9 +1,51 @@
 #!/usr/bin/env lua
+package.preload["make"] = package.preload["make"] or function(...)
+  local fs = require("fs")
+  local core = require("core")
+  local function pretty(...)
+    return print(core.inspect(...))
+  end
+  local make = {}
+  local hook = {}
+  local cache_path = (os.getenv("HOME") .. "/.config/umai/")
+  fs.mkdir(cache_path)
+  local function cache(path, data)
+    local cache_target = (cache_path .. path:gsub("[~/]", "_"))
+    fs.write(cache_target, data)
+    return cache_target
+  end
+  hook.softlink = function(v, data)
+    return fs.link(cache(v, data), v)
+  end
+  hook.shell = function(v)
+    return os.execute(v)
+  end
+  make.make = function(rendered)
+    local data = rendered.data
+    local meta = rendered.meta
+    pretty(meta)
+    for _, m in ipairs(meta) do
+      local f = hook[m[1]]
+      local v = m[2]
+      if f then
+        f(v, data)
+      else
+        print(("err: hook '" .. m[1] .. "' is undefined"))
+      end
+    end
+    return nil
+  end
+  local function _0_(_, ...)
+    return make.make(...)
+  end
+  setmetatable(make, {__call = _0_})
+  return make
+end
 package.preload["sandbox"] = package.preload["sandbox"] or function(...)
   local fetch = require("fetch")
   local sandbox = {}
-  sandbox.target = function(s)
-    return "", {target = s}
+  local function meta(k, v)
+    return "", {k, v}
   end
   sandbox.get = function(s)
     return fetch(s)
@@ -11,11 +53,23 @@ package.preload["sandbox"] = package.preload["sandbox"] or function(...)
   sandbox.getenv = function(s)
     return os.getenv(s)
   end
+  local function _0_(self, k, v)
+    local function _1_(v0)
+      return meta(k, v0)
+    end
+    return _1_
+  end
+  setmetatable(sandbox, {__index = _0_})
   return sandbox
 end
 package.preload["args"] = package.preload["args"] or function(...)
   local args = {files = {}, vars = {}, varsets = ""}
+  local usage = "umai - .files management and templating\n\nusage:\n  umai [--varsets <path>] [-key val ...] - <template> ..."
   args.parse = function(xs)
+    if (("--help" == xs[1]) or ("-h" == xs[1])) then
+      print(usage)
+      os.exit()
+    end
     local key = ""
     local files_3f = false
     for _, val in ipairs(xs) do
@@ -204,7 +258,7 @@ package.preload["render"] = package.preload["render"] or function(...)
     for _, s in ipairs(xs) do
       local d, m = render.single(s)
       table.insert(data, d)
-      core["merge!"](meta, m)
+      table.insert(meta, m)
     end
     return {data = table.concat(data), meta = meta}
   end
@@ -753,6 +807,9 @@ package.preload["core"] = package.preload["core"] or function(...)
       return #xs
     end
   end
+  core["empty?"] = function(xs)
+    return (0 == core.count(xs))
+  end
   core["run!"] = function(f, xs)
     if xs then
       local nxs = core.count(xs)
@@ -923,27 +980,15 @@ fs = require("fs")
 local core = require("core")
 local parse = require("parse")
 local render = require("render")
+local make = require("make")
 local fetch = require("fetch")
 local expose = require("expose")
 local args = require("args")
 local function pretty(...)
   return print(core.inspect(...))
 end
-local function make_21(rendered)
-  if core["has?"](rendered.meta, "target") then
-    local content = rendered.data
-    local target = rendered.meta.target
-    local cache = (os.getenv("HOME") .. "/.config/umai/" .. fs.basename(target))
-    fs.mkdir(fs.dirname(cache))
-    fs.write(cache, content)
-    return fs.link(cache, target)
-  else
-    return error("cannot install, no target is specified")
-  end
-end
 local function install_21(path)
-  print((":: " .. path))
-  return make_21(render(parse(fs.read(path))))
+  return make(render(parse(fs.read(path))))
 end
 local function nvim_rtp()
   local file = assert(io.popen("nvim --headless -c 'set runtimepath' -c 'q'", "r"))
@@ -1002,4 +1047,8 @@ local function get_colors_from_lush()
 end
 expose.set("limestone", get_colors_from_lush())
 args.parse({...})
-return pretty(args)
+pretty(args)
+for _, v in ipairs(args.files) do
+  install_21(v)
+end
+return nil

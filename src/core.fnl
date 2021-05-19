@@ -51,6 +51,9 @@
     (not xs) 0
     (length xs)))
 
+(fn core.empty? [xs]
+  (= 0 (core.count xs)))
+
 (fn core.run! [f xs]
   "execute the function (for side effects) for every xs."
   (when xs
