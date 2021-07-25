@@ -125,12 +125,14 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
         end
       end
       local function _1_()
-        local comment_re = "%s*!"
-        local keyval_re = "(%w+):%s*(%w+)"
+        local comment_re = "!"
+        local key_re = "(.+):"
+        local val_re = ":%s*(.+)"
         local xt = {}
         for line in file:lines() do
           if not (line:match(comment_re) or (line == "")) then
-            local key, val = line:match(keyval_re)
+            local key = line:match(key_re)
+            local val = (line:match(val_re) or "")
             xt[key] = val
           end
         end
@@ -145,7 +147,7 @@ package.preload["fetch"] = package.preload["fetch"] or function(...)
   end
   fetch["from-varset"] = function(s)
     local name = s:match("(%w+)%.")
-    local path = s:match("%.([%w.]+)")
+    local path = s:match("%.([%S.]+)")
     if (nil ~= name) then
       return core["get-dp"](varset_load(name), path)
     end

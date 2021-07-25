@@ -1,5 +1,4 @@
 #!/bin/sh
-# NB: we're in sh
 
 # pack everything into a single binary
 cd src
@@ -14,4 +13,4 @@ $(cat umai)" > umai
 chmod +x umai
 
 # add to path
-cp umai "$HOME/.garden/bin/umai"
+cp umai "${HOME}/.garden/bin/umai"

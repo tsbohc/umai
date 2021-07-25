@@ -32,13 +32,16 @@
     (when path
       (with-open
         [file (assert (io.open (.. path "/" name) "r"))]
-        (let [comment-re "%s*!"
-              keyval-re  "(%w+):%s*(%w+)"
+        (let [comment-re "!"
+              key-re "(.+):"
+              val-re ":%s*(.+)"
               xt {}]
           (each [line (file:lines)]
             (when (not (or (line:match comment-re) (= line "")))
-              (let [(key val) (line:match keyval-re)]
+              (let [key (line:match key-re)
+                    val (or (line:match val-re) "")]
                 (tset xt key val))))
+          ;(print (core.inspect xt))
           xt)))))
 
 (local varset-load
@@ -49,7 +52,7 @@
 
 (fn fetch.from-varset [s]
   (let [name (s:match "(%w+)%.")
-        path (s:match "%.([%w.]+)")]
+        path (s:match "%.([%S.]+)")]
     (when (not= nil name)
       (core.get-dp (varset-load name) path))))
 

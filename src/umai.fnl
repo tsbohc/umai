@@ -50,6 +50,7 @@
 (set package.path (.. package.path ";" (get-theme-rtp)))
 (local limestone (require :limestone))
 
+; couldn't i just export hex values and just require them? or maybe it fails on require... yeah
 (fn get-colors-from-lush []
   (let [r {}]
     (each [k v (pairs limestone.X.lush)]

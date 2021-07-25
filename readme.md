@@ -14,6 +14,10 @@ umai is meant to be scripted and extended.
 
 ## usage
 ```
+umai - .files management and templating
+
+usage:
+  umai [--varsets <path>] [-key val ...] - <template> ...
 ```
 
 ## examples

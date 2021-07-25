@@ -24,7 +24,7 @@
   true)
 
 (fn core.has? [xt y]
-  "check if table contains a value or a (k, v) pair"
+  "check if table contains a value or a key pair"
   (if (core.seq? xt)
     (each [_ v (ipairs xt)]
       (when (= v y)
